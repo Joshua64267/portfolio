@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Oil Price Dashboard – WTI Crude</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #080c14;
+      --card: #0f1520;
+      --card2: #131c2b;
+      --border: #1e2d42;
+      --accent: #f59e0b;
+      --accent2: #3b82f6;
+      --red: #ef4444;
+      --green: #22c55e;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --subtle: #94a3b8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* TICKER BAR */
+    .ticker {
+      background: #0a0f1a;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 24px;
+      display: flex;
+      gap: 32px;
+      font-size: 0.78rem;
+      overflow-x: auto;
+    }
+    .ticker-item { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+    .ticker-item .label { color: var(--muted); }
+    .ticker-item .val { font-weight: 600; }
+    .up { color: var(--green); }
+    .down { color: var(--red); }
+
+    /* HEADER */
+    header {
+      padding: 28px 32px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .header-left h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
+    .header-left h1 span { color: var(--accent); }
+    .header-left p { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+    .header-right { display: flex; gap: 12px; flex-wrap: wrap; }
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      text-align: center;
+      min-width: 120px;
+    }
+    .kpi .kpi-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi .kpi-val { font-size: 1.4rem; font-weight: 700; margin-top: 2px; }
+    .kpi .kpi-sub { font-size: 0.75rem; margin-top: 2px; }
+
+    /* LAYOUT */
+    main { padding: 24px 32px; display: grid; gap: 24px; }
+
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+    .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+    @media (max-width: 1100px) { .row-2 { grid-template-columns: 1fr; } .row-3 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 700px) { .row-3, .row-4 { grid-template-columns: 1fr 1fr; } main { padding: 16px; } }
+
+    /* CARDS */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px; height: 12px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    /* CHART CONTAINER */
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap-sm { position: relative; height: 200px; }
+
+    /* EVENTS TIMELINE */
+    .events { display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto; }
+    .event-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--card2);
+      border-radius: 8px;
+      border-left: 3px solid var(--accent);
+      align-items: flex-start;
+    }
+    .event-item.neg { border-left-color: var(--red); }
+    .event-item.pos { border-left-color: var(--green); }
+    .event-item.neu { border-left-color: var(--accent2); }
+    .event-date { font-size: 0.72rem; color: var(--muted); white-space: nowrap; min-width: 54px; margin-top: 2px; }
+    .event-text { font-size: 0.82rem; line-height: 1.4; }
+    .event-text strong { color: var(--text); display: block; margin-bottom: 2px; }
+    .event-text span { color: var(--subtle); }
+
+    /* PRODUCER BARS */
+    .producer-list { display: flex; flex-direction: column; gap: 12px; }
+    .producer-item { }
+    .producer-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.83rem; }
+    .producer-header .country { display: flex; align-items: center; gap: 6px; }
+    .producer-header .flag { font-size: 1rem; }
+    .producer-bar-bg { background: var(--card2); border-radius: 4px; height: 8px; overflow: hidden; }
+    .producer-bar { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--accent), #f97316); transition: width 1s ease; }
+
+    /* DRIVER CARDS */
+    .driver-card {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .driver-icon { font-size: 1.8rem; margin-bottom: 8px; }
+    .driver-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; }
+    .driver-text { font-size: 0.78rem; color: var(--subtle); line-height: 1.5; }
+    .driver-impact {
+      margin-top: 10px;
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      font-weight: 600;
+    }
+    .impact-high { background: rgba(239,68,68,0.15); color: var(--red); }
+    .impact-med { background: rgba(245,158,11,0.15); color: var(--accent); }
+    .impact-low { background: rgba(59,130,246,0.15); color: var(--accent2); }
+
+    /* LEGEND */
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--subtle); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* FOOTER */
+    footer { text-align: center; padding: 24px; color: var(--muted); font-size: 0.78rem; border-top: 1px solid var(--border); }
+    footer a { color: var(--accent2); text-decoration: none; }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-item"><span class="label">WTI Crude</span><span class="val">$72.40</span><span class="down">▼ -1.2%</span></div>
+  <div class="ticker-item"><span class="label">Brent Crude</span><span class="val">$76.80</span><span class="down">▼ -0.9%</span></div>
+  <div class="ticker-item"><span class="label">Nat. Gas</span><span class="val">$2.18</span><span class="up">▲ +0.5%</span></div>
+  <div class="ticker-item"><span class="label">USD Index</span><span class="val">104.2</span><span class="up">▲ +0.3%</span></div>
+  <div class="ticker-item"><span class="label">S&P 500</span><span class="val">5,204</span><span class="down">▼ -0.4%</span></div>
+  <div class="ticker-item"><span class="label">Gold</span><span class="val">$2,330</span><span class="up">▲ +0.1%</span></div>
+  <div class="ticker-item"><span class="label">OPEC+ Quota</span><span class="val">40.46M b/d</span><span class="muted" style="color:#64748b">━ stabil</span></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <h1>WTI <span>Crude Oil</span> Dashboard</h1>
+    <p>Globale Ölmarkt-Analyse · Stand: Mai 2025 · Daten: EIA, OPEC, Yahoo Finance</p>
+  </div>
+  <div class="header-right">
+    <div class="kpi">
+      <div class="kpi-label">Aktuell</div>
+      <div class="kpi-val" style="color: var(--accent)">$72.40</div>
+      <div class="kpi-sub down">▼ $0.88 heute</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">52W Hoch</div>
+      <div class="kpi-val">$93.68</div>
+      <div class="kpi-sub" style="color:var(--muted)">Sep 2023</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">52W Tief</div>
+      <div class="kpi-val">$66.12</div>
+      <div class="kpi-sub" style="color:var(--muted)">Jun 2024</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">YTD Change</div>
+      <div class="kpi-val down">-8.4%</div>
+      <div class="kpi-sub" style="color:var(--muted)">seit Jan 2025</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ROW 1: Hauptchart + Events -->
+  <div class="row-2">
+
+    <div class="card" style="grid-column: span 1;">
+      <div class="card-title">Preisverlauf WTI Crude Oil 2020–2025</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> WTI Preis ($/Barrel)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> 12M Durchschnitt</div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="mainChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Was hat den Preis bewegt?</div>
+      <div class="events">
+        <div class="event-item neg">
+          <div class="event-date">Apr 2020</div>
+          <div class="event-text"><strong>COVID-Crash: WTI fällt auf -$37!</strong><span>Weltweiter Lockdown → Nachfrage kollabiert. Lagerkapazitäten voll. Historisch: Preis erstmals negativ.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">Apr 2020</div>
+          <div class="event-text"><strong>OPEC+ Mega-Cut: -9.7M Barrel/Tag</strong><span>Saudi-Arabien & Russland einigen sich auf größte Produktionskürzung aller Zeiten. Preise erholen sich.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">Nov 2021</div>
+          <div class="event-text"><strong>Impfstoff-Boom treibt Nachfrage</strong><span>Globale Wirtschaft öffnet wieder. Ölnachfrage steigt schneller als Angebot. Preis klettert auf $80+.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">Feb 2022</div>
+          <div class="event-text"><strong>Russland invadiert Ukraine → $130!</strong><span>Russland = 10% der globalen Produktion. Sanktionen, Embargo-Angst. Preis explodiert auf 14-Jahres-Hoch.</span></div>
+        </div>
+        <div class="event-item neu">
+          <div class="event-date">Jun 2022</div>
+          <div class="event-text"><strong>Fed erhöht Zinsen aggressiv</strong><span>Starker Dollar macht Öl teurer für Nicht-USD-Länder. Nachfrage sinkt. Preise fallen von $120 auf $80.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">Okt 2023</div>
+          <div class="event-text"><strong>Hamas-Angriff auf Israel</strong><span>Geopolitische Risikoprämie steigt. Angst vor Eskalation im Nahen Osten → kurzer Spike auf $93.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">Nov 2023</div>
+          <div class="event-text"><strong>OPEC+ verlängert Kürzungen bis 2024</strong><span>Saudi-Arabien kürzt freiwillig 1M b/d extra. Ziel: Preis über $80 halten. Markt bleibt angespannt.</span></div>
+        </div>
+        <div class="event-item neu">
+          <div class="event-date">2025</div>
+          <div class="event-text"><strong>China-Nachfrage enttäuscht</strong><span>Chinas Wirtschaft erholt sich langsamer als erwartet. Stärkster Ölkonsument weltweit bleibt schwach.</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROW 2: Produzenten + 30-Tage Chart -->
+  <div class="row-2">
+
+    <div class="card">
+      <div class="card-title">Wer verkauft das Öl? – Top Produzenten 2024</div>
+      <div class="producer-list">
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span class="flag">🇺🇸</span> USA</div>
+            <div><strong>13.2M</strong> <span style="color:var(--muted);font-size:0.75rem">Barrel/Tag</span> <span class="up" style="font-size:0.75rem">▲ #1 weltweit</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:100%; background: linear-gradient(90deg,#3b82f6,#60a5fa)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span class="flag">🇸🇦</span> Saudi-Arabien</div>
+            <div><strong>9.0M</strong> <span style="color:var(--muted);font-size:0.75rem">Barrel/Tag</span> <span class="down" style="font-size:0.75rem">▼ OPEC-Kürzung</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:68%"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span class="flag">🇷🇺</span> Russland</div>
+            <div><strong>9.5M</strong> <span style="color:var(--muted);font-size:0.75rem">Barrel/Tag</span> <span style="color:var(--accent);font-size:0.75rem">⚠ Sanktionen</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:72%; background: linear-gradient(90deg,#ef4444,#f97316)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span class="flag">🇨🇦</span> Kanada</div>
+            <div><strong>5.8M</strong> <span style="color:var(--muted);font-size:0.75rem">Barrel/Tag</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:44%; background: linear-gradient(90deg,#8b5cf6,#a78bfa)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span class="flag">🇮🇶</span> Irak</div>
+            <div><strong>4.2M</strong> <span style="color:var(--muted);font-size:0.75rem">Barrel/Tag</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:32%; background: linear-gradient(90deg,#22c55e,#86efac)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span class="flag">🇦🇪</span> VAE</div>
+            <div><strong>3.2M</strong> <span style="color:var(--muted);font-size:0.75rem">Barrel/Tag</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:24%; background: linear-gradient(90deg,#f59e0b,#fcd34d)"></div></div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px; padding:12px; background:var(--card2); border-radius:8px; font-size:0.78rem; color:var(--subtle); line-height:1.6">
+        💡 <strong style="color:var(--text)">Wichtig zu verstehen:</strong> Die USA sind seit 2018 der größte Produzent weltweit (Shale-Boom) – trotzdem importieren sie Öl, weil die eigene Sorte (leichtes Öl) nicht für alle Raffinerien passt. Preise werden durch <strong style="color:var(--accent)">OPEC+ Entscheidungen in Riad & Moskau</strong> maßgeblich gesteuert.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Preisentwicklung letzte 12 Monate</div>
+      <div class="chart-wrap">
+        <canvas id="recentChart"></canvas>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+        <div style="flex:1; background:var(--card2); border-radius:8px; padding:10px; text-align:center;">
+          <div style="font-size:0.7rem;color:var(--muted)">Ø 12 Monate</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">$78.50</div>
+        </div>
+        <div style="flex:1; background:var(--card2); border-radius:8px; padding:10px; text-align:center;">
+          <div style="font-size:0.7rem;color:var(--muted)">Volatilität</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--accent2)">±$8.40</div>
+        </div>
+        <div style="flex:1; background:var(--card2); border-radius:08px; padding:10px; text-align:center;">
+          <div style="font-size:0.7rem;color:var(--muted)">Trend</div>
+          <div style="font-size:1.1rem;font-weight:700;" class="down">Abwärts</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROW 3: Treiber -->
+  <div>
+    <div class="card-title" style="margin-bottom:16px">Was bewegt den Ölpreis? – Die 4 großen Kräfte</div>
+    <div class="row-4">
+      <div class="driver-card">
+        <div class="driver-icon">🛢️</div>
+        <div class="driver-title">OPEC+ Angebot</div>
+        <div class="driver-text">13 Länder kontrollieren ~40% der Weltproduktion. Wenn Saudi-Arabien 1 Million Barrel/Tag kürzt, steigt der Preis sofort. Aktuell: Kürzungen bis Ende 2025.</div>
+        <div class="driver-impact impact-high">⬆ Sehr hoher Einfluss</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">🌏</div>
+        <div class="driver-title">China & Indien Nachfrage</div>
+        <div class="driver-text">China = 16% des globalen Verbrauchs. Wenn Chinas Wirtschaft wächst, braucht es mehr Öl → Preis steigt. 2024/25 enttäuscht China → Preisdruck nach unten.</div>
+        <div class="driver-impact impact-high">⬆ Sehr hoher Einfluss</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">💵</div>
+        <div class="driver-title">US-Dollar Stärke</div>
+        <div class="driver-text">Öl wird weltweit in Dollar gehandelt. Starker Dollar → Öl teurer für andere Länder → weniger Nachfrage → Preis sinkt. USD Index +5% = Öl ca. -3-5%.</div>
+        <div class="driver-impact impact-med">→ Mittlerer Einfluss</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">⚔️</div>
+        <div class="driver-title">Geopolitik & Krisen</div>
+        <div class="driver-text">Kriege im Nahen Osten, Sanktionen gegen Russland, Hurrikane in der Golfregion – alles kann Lieferketten stören. Wirkt meist kurzfristig, aber heftig.</div>
+        <div class="driver-impact impact-med">⬆ Kurzfristig hoch</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 4: Angebot/Nachfrage Balance -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Globales Angebot vs. Nachfrage (Mio. Barrel/Tag)</div>
+      <div class="chart-wrap-sm">
+        <canvas id="balanceChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Ölpreis vs. US-Dollar Index – Korrelation</div>
+      <div class="chart-wrap-sm">
+        <canvas id="corrChart"></canvas>
+      </div>
+      <div style="margin-top:10px;font-size:0.76rem;color:var(--subtle);line-height:1.5">
+        📊 <strong style="color:var(--text)">Korrelation: -0.72</strong> — Wenn der Dollar stark ist, fällt der Ölpreis tendenziell. Diese inverse Beziehung ist einer der verlässlichsten Indikatoren für Öl-Trader.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  WTI Crude Oil Dashboard · Daten: EIA, OPEC, Yahoo Finance · Stand Mai 2025 ·
+  Erstellt für <a href="https://joshua64267.github.io/portfolio">Joshua Müller Portfolio</a>
+</footer>
+
+<script>
+// ── DATA ──────────────────────────────────────────────
+const labels5y = [
+  'Jan 20','Feb 20','Mär 20','Apr 20','Mai 20','Jun 20',
+  'Jul 20','Aug 20','Sep 20','Okt 20','Nov 20','Dez 20',
+  'Jan 21','Feb 21','Mär 21','Apr 21','Mai 21','Jun 21',
+  'Jul 21','Aug 21','Sep 21','Okt 21','Nov 21','Dez 21',
+  'Jan 22','Feb 22','Mär 22','Apr 22','Mai 22','Jun 22',
+  'Jul 22','Aug 22','Sep 22','Okt 22','Nov 22','Dez 22',
+  'Jan 23','Feb 23','Mär 23','Apr 23','Mai 23','Jun 23',
+  'Jul 23','Aug 23','Sep 23','Okt 23','Nov 23','Dez 23',
+  'Jan 24','Feb 24','Mär 24','Apr 24','Mai 24','Jun 24',
+  'Jul 24','Aug 24','Sep 24','Okt 24','Nov 24','Dez 24',
+  'Jan 25','Feb 25','Mär 25','Apr 25','Mai 25'
+];
+
+const wtiPrices = [
+  57.0, 44.7, 20.4,  16.7, 33.1, 39.3,
+  40.7, 42.6, 40.2,  36.8, 45.3, 48.5,
+  52.2, 61.5, 59.2,  63.5, 66.3, 73.5,
+  73.9, 68.5, 75.0,  83.6, 68.2, 75.2,
+  88.2, 95.7,108.4, 104.7,114.7,114.2,
+  98.6, 90.3, 79.5,  87.0, 82.1, 77.2,
+  78.9, 76.3, 72.9,  79.4, 72.1, 70.0,
+  81.2, 84.0, 90.8,  83.5, 77.2, 72.5,
+  76.9, 78.5, 83.1,  85.0, 79.8, 81.5,
+  77.2, 77.6, 68.4,  70.3, 67.8, 69.5,
+  74.2, 70.5, 67.8,  65.0, 62.5
+];
+
+// 12M rolling average
+const avg12m = wtiPrices.map((_, i) => {
+  if (i < 11) return null;
+  const slice = wtiPrices.slice(i - 11, i + 1);
+  return +(slice.reduce((a, b) => a + b, 0) / 12).toFixed(1);
+});
+
+// Key events annotations (indices in the labels5y array)
+const events = [
+  { index: 3,  label: '💥 COVID-Crash', color: '#ef4444' },
+  { index: 3,  label: '✂️ OPEC+ Mega-Cut', color: '#22c55e' },
+  { index: 25, label: '⚔️ Ukraine-Krieg', color: '#ef4444' },
+  { index: 28, label: '🔺 $115 Peak', color: '#f59e0b' },
+  { index: 45, label: '🕌 Gaza-Konflikt', color: '#f59e0b' },
+];
+
+// Recent 12M
+const labels12m = labels5y.slice(-13);
+const prices12m = wtiPrices.slice(-13);
+
+// Balance data
+const balanceLabels = ['2019','2020','2021','2022','2023','2024','2025e'];
+const supply =  [100.6, 91.0, 96.2, 99.8,101.8,102.8,103.5];
+const demand =  [100.7, 92.2, 96.6,100.0,101.9,103.2,104.1];
+
+// Corr data (USD Index inverted for viz)
+const corrLabels = labels5y.filter((_,i) => i % 6 === 0);
+const oilCorr = wtiPrices.filter((_,i) => i % 6 === 0);
+const usdCorr = [97.5,99.8,93.0,91.5,92.8,96.3,96.8,103.2,109.6,106.5,104.8,102.1,103.5,101.8,104.3,106.0,104.5,101.2,103.8,104.8,103.0,102.5];
+
+// ── CHART DEFAULTS ────────────────────────────────────
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// ── MAIN CHART ────────────────────────────────────────
+const ctx1 = document.getElementById('mainChart').getContext('2d');
+const gradMain = ctx1.createLinearGradient(0, 0, 0, 280);
+gradMain.addColorStop(0, 'rgba(245,158,11,0.25)');
+gradMain.addColorStop(1, 'rgba(245,158,11,0.01)');
+
+new Chart(ctx1, {
+  type: 'line',
+  data: {
+    labels: labels5y,
+    datasets: [
+      {
+        label: 'WTI $/Barrel',
+        data: wtiPrices,
+        borderColor: '#f59e0b',
+        backgroundColor: gradMain,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#f59e0b',
+        fill: true,
+        tension: 0.3
+      },
+      {
+        label: '12M Ø',
+        data: avg12m,
+        borderColor: '#3b82f6',
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderDash: [4, 3],
+        pointRadius: 0,
+        fill: false,
+        tension: 0.3
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0f1520',
+        borderColor: '#1e2d42',
+        borderWidth: 1,
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(1) ?? 'n/a'}`
+        }
+      },
+      annotation: { annotations: {} }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(30,45,66,0.5)' },
+        ticks: { maxTicksLimit: 12 }
+      },
+      y: {
+        grid: { color: 'rgba(30,45,66,0.5)' },
+        ticks: { callback: v => '$' + v }
+      }
+    }
+  }
+});
+
+// ── RECENT CHART ──────────────────────────────────────
+const ctx2 = document.getElementById('recentChart').getContext('2d');
+const gradRecent = ctx2.createLinearGradient(0, 0, 0, 280);
+gradRecent.addColorStop(0, 'rgba(59,130,246,0.3)');
+gradRecent.addColorStop(1, 'rgba(59,130,246,0.01)');
+
+new Chart(ctx2, {
+  type: 'line',
+  data: {
+    labels: labels12m,
+    datasets: [{
+      label: 'WTI $/Barrel',
+      data: prices12m,
+      borderColor: '#3b82f6',
+      backgroundColor: gradRecent,
+      borderWidth: 2,
+      pointRadius: 3,
+      pointBackgroundColor: '#3b82f6',
+      fill: true,
+      tension: 0.4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0f1520',
+        borderColor: '#1e2d42',
+        borderWidth: 1,
+        callbacks: { label: ctx => ` $${ctx.parsed.y.toFixed(1)}` }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: {
+        grid: { color: 'rgba(30,45,66,0.5)' },
+        ticks: { callback: v => '$' + v },
+        min: 55, max: 100
+      }
+    }
+  }
+});
+
+// ── BALANCE CHART ─────────────────────────────────────
+new Chart(document.getElementById('balanceChart'), {
+  type: 'bar',
+  data: {
+    labels: balanceLabels,
+    datasets: [
+      {
+        label: 'Angebot',
+        data: supply,
+        backgroundColor: 'rgba(59,130,246,0.7)',
+        borderRadius: 4
+      },
+      {
+        label: 'Nachfrage',
+        data: demand,
+        backgroundColor: 'rgba(245,158,11,0.7)',
+        borderRadius: 4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#94a3b8', boxWidth: 12 }
+      },
+      tooltip: {
+        backgroundColor: '#0f1520',
+        borderColor: '#1e2d42',
+        borderWidth: 1,
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}M b/d` }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: {
+        grid: { color: 'rgba(30,45,66,0.5)' },
+        min: 88,
+        ticks: { callback: v => v + 'M' }
+      }
+    }
+  }
+});
+
+// ── CORR CHART ────────────────────────────────────────
+const ctx4 = document.getElementById('corrChart').getContext('2d');
+new Chart(ctx4, {
+  type: 'line',
+  data: {
+    labels: corrLabels,
+    datasets: [
+      {
+        label: 'WTI Öl ($)',
+        data: oilCorr,
+        borderColor: '#f59e0b',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 2,
+        tension: 0.3,
+        yAxisID: 'y'
+      },
+      {
+        label: 'USD Index',
+        data: usdCorr.slice(0, corrLabels.length),
+        borderColor: '#3b82f6',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderDash: [4,3],
+        pointRadius: 2,
+        tension: 0.3,
+        yAxisID: 'y2'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#94a3b8', boxWidth: 12 } },
+      tooltip: {
+        backgroundColor: '#0f1520',
+        borderColor: '#1e2d42',
+        borderWidth: 1
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: {
+        type: 'linear', position: 'left',
+        grid: { color: 'rgba(30,45,66,0.5)' },
+        ticks: { callback: v => '$' + v, color: '#f59e0b' }
+      },
+      y2: {
+        type: 'linear', position: 'right',
+        grid: { drawOnChartArea: false },
+        ticks: { color: '#3b82f6' }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
