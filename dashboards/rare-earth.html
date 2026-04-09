@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Seltene Erden – Globales Markt-Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #080c14;
+      --card: #0f1520;
+      --card2: #131c2b;
+      --border: #1e2d42;
+      --accent: #a78bfa;
+      --accent2: #38bdf8;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --green: #22c55e;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --subtle: #94a3b8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* TICKER */
+    .ticker { background: #0a0f1a; border-bottom: 1px solid var(--border); padding: 8px 24px; display: flex; gap: 28px; font-size: 0.78rem; overflow-x: auto; }
+    .ticker-item { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+    .ticker-item .label { color: var(--muted); }
+    .ticker-item .val { font-weight: 600; }
+    .up { color: #22c55e; } .down { color: #ef4444; }
+
+    /* HEADER */
+    header { padding: 28px 32px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+    .header-left h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
+    .header-left h1 span { color: var(--accent); }
+    .header-left p { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+    .header-right { display: flex; gap: 12px; flex-wrap: wrap; }
+    .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; text-align: center; min-width: 120px; }
+    .kpi .kpi-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi .kpi-val { font-size: 1.4rem; font-weight: 700; margin-top: 2px; }
+    .kpi .kpi-sub { font-size: 0.75rem; margin-top: 2px; }
+
+    /* LAYOUT */
+    main { padding: 24px 32px; display: grid; gap: 24px; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+    .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    @media (max-width: 1100px) { .row-2 { grid-template-columns: 1fr; } .row-3 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 700px) { .row-3, .row-4 { grid-template-columns: 1fr 1fr; } main { padding: 16px; } }
+
+    /* CARDS */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .card-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .card-title::before { content: ''; display: inline-block; width: 3px; height: 12px; background: var(--accent); border-radius: 2px; }
+
+    /* CHARTS */
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap-sm { position: relative; height: 210px; }
+
+    /* EVENTS */
+    .events { display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto; }
+    .event-item { display: flex; gap: 12px; padding: 10px 12px; background: var(--card2); border-radius: 8px; border-left: 3px solid var(--accent); align-items: flex-start; }
+    .event-item.neg  { border-left-color: var(--red); }
+    .event-item.pos  { border-left-color: var(--green); }
+    .event-item.warn { border-left-color: var(--amber); }
+    .event-item.neu  { border-left-color: var(--accent2); }
+    .event-date { font-size: 0.72rem; color: var(--muted); white-space: nowrap; min-width: 54px; margin-top: 2px; }
+    .event-text { font-size: 0.82rem; line-height: 1.4; }
+    .event-text strong { color: var(--text); display: block; margin-bottom: 2px; }
+    .event-text span { color: var(--subtle); }
+
+    /* PRODUCER BARS */
+    .producer-list { display: flex; flex-direction: column; gap: 12px; }
+    .producer-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.83rem; }
+    .producer-header .country { display: flex; align-items: center; gap: 6px; }
+    .producer-bar-bg { background: var(--card2); border-radius: 4px; height: 8px; overflow: hidden; }
+    .producer-bar { height: 8px; border-radius: 4px; }
+
+    /* ELEMENT CARDS */
+    .element-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    @media (max-width: 900px) { .element-grid { grid-template-columns: repeat(2, 1fr); } }
+    .element-card { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+    .element-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+    .element-symbol { font-size: 1.8rem; font-weight: 700; color: var(--accent); line-height: 1; }
+    .element-num { font-size: 0.7rem; color: var(--muted); }
+    .element-name { font-size: 0.82rem; font-weight: 600; }
+    .element-use { font-size: 0.73rem; color: var(--subtle); line-height: 1.4; margin-top: 4px; }
+    .element-price { font-size: 0.75rem; color: var(--amber); margin-top: 6px; font-weight: 600; }
+
+    /* SUPPLY CHAIN */
+    .chain { display: flex; align-items: stretch; gap: 0; overflow-x: auto; margin-top: 8px; }
+    .chain-step { flex: 1; min-width: 120px; background: var(--card2); border: 1px solid var(--border); padding: 14px 12px; text-align: center; position: relative; }
+    .chain-step:not(:last-child)::after { content: '▶'; position: absolute; right: -12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.9rem; z-index: 1; }
+    .chain-step:not(:first-child) { border-left: none; }
+    .chain-step:first-child { border-radius: 8px 0 0 8px; }
+    .chain-step:last-child { border-radius: 0 8px 8px 0; }
+    .chain-icon { font-size: 1.6rem; margin-bottom: 6px; }
+    .chain-title { font-size: 0.75rem; font-weight: 600; color: var(--text); }
+    .chain-detail { font-size: 0.68rem; color: var(--subtle); margin-top: 4px; line-height: 1.4; }
+    .chain-flag { font-size: 0.78rem; margin-top: 6px; }
+
+    /* DRIVER CARDS */
+    .driver-card { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .driver-icon { font-size: 1.8rem; margin-bottom: 8px; }
+    .driver-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; }
+    .driver-text { font-size: 0.78rem; color: var(--subtle); line-height: 1.5; }
+    .driver-impact { margin-top: 10px; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; display: inline-block; font-weight: 600; }
+    .impact-high { background: rgba(239,68,68,0.15); color: var(--red); }
+    .impact-med  { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .impact-low  { background: rgba(167,139,250,0.15); color: var(--accent); }
+
+    /* LEGEND */
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--subtle); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    footer { text-align: center; padding: 24px; color: var(--muted); font-size: 0.78rem; border-top: 1px solid var(--border); }
+    footer a { color: var(--accent2); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-item"><span class="label">Neodym (Nd)</span><span class="val">$68/kg</span><span class="down">▼ -3.1%</span></div>
+  <div class="ticker-item"><span class="label">Dysprosium (Dy)</span><span class="val">$250/kg</span><span class="up">▲ +1.8%</span></div>
+  <div class="ticker-item"><span class="label">Cer (Ce)</span><span class="val">$2.1/kg</span><span class="down">▼ -0.5%</span></div>
+  <div class="ticker-item"><span class="label">Lanthan (La)</span><span class="val">$1.8/kg</span><span class="down">▼ -0.2%</span></div>
+  <div class="ticker-item"><span class="label">Terbium (Tb)</span><span class="val">$1,350/kg</span><span class="up">▲ +2.4%</span></div>
+  <div class="ticker-item"><span class="label">Europium (Eu)</span><span class="val">$28/kg</span><span class="down">▼ -1.0%</span></div>
+  <div class="ticker-item"><span class="label">Yttrium (Y)</span><span class="val">$3.5/kg</span><span class="up">▲ +0.3%</span></div>
+  <div class="ticker-item"><span class="label">🇨🇳 China Anteil Abbau</span><span class="val">~60%</span><span style="color:#64748b">━ dominant</span></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <h1>Seltene <span>Erden</span> Dashboard</h1>
+    <p>Die Rohstoffe der Zukunft · E-Autos, Windkraft, Smartphones, Rüstung · Stand Mai 2025</p>
+  </div>
+  <div class="header-right">
+    <div class="kpi">
+      <div class="kpi-label">China Abbau</div>
+      <div class="kpi-val" style="color:var(--red)">~60%</div>
+      <div class="kpi-sub down">▲ Monopol-Risiko</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">China Verarbeitung</div>
+      <div class="kpi-val" style="color:var(--red)">~85%</div>
+      <div class="kpi-sub" style="color:var(--muted)">fast alles</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Weltproduktion</div>
+      <div class="kpi-val">350.000 t</div>
+      <div class="kpi-sub up">▲ 2024 Rekord</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Elemente gesamt</div>
+      <div class="kpi-val" style="color:var(--accent)">17</div>
+      <div class="kpi-sub" style="color:var(--muted)">Lanthanide + Sc + Y</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ROW 1: Preis + Events -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Neodym & Dysprosium Preisverlauf 2015–2025</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div> Neodym ($/kg)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div> Dysprosium ($/kg, ÷5)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Terbium ($/kg, ÷20)</div>
+      </div>
+      <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Was hat die Preise bewegt?</div>
+      <div class="events">
+        <div class="event-item neg">
+          <div class="event-date">2010–11</div>
+          <div class="event-text"><strong>China drosselt Exporte drastisch – Preise ×10!</strong><span>China reduziert Exportquoten um 40%. Neodym springt von $15 auf $500/kg. Welt merkt: 97% Abhängigkeit von China.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">2012–15</div>
+          <div class="event-text"><strong>WTO erzwingt Exportfreigabe – Crash</strong><span>WTO verurteilt Chinas Exportbeschränkungen. China gibt nach. Preise kollabieren. Aber China behält Verarbeitungsmonopol.</span></div>
+        </div>
+        <div class="event-item neu">
+          <div class="event-date">2017–19</div>
+          <div class="event-text"><strong>USA & Australien starten Gegenmaßnahmen</strong><span>USA reaktiviert Mountain Pass Mine (Kalifornien). Australien: Lynas baut größte Raffinerie außerhalb Chinas.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">2019</div>
+          <div class="event-text"><strong>US-China Handelskrieg: China droht mit Stopp</strong><span>Xi Jinping besucht symbolisch eine Seltene-Erden-Mine. Signal: "Wir können eure Lieferketten abschneiden." Preise steigen sofort.</span></div>
+        </div>
+        <div class="event-item warn">
+          <div class="event-date">2021</div>
+          <div class="event-text"><strong>E-Auto-Boom treibt Neodym-Nachfrage</strong><span>Jeder E-Auto-Motor braucht 1-2 kg Neodym-Eisen-Bor Magnete. Tesla, BYD, VW – alle brauchen das gleiche Material.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">2023</div>
+          <div class="event-text"><strong>China beschränkt Gallium & Germanium Exporte</strong><span>Keine klassischen SE, aber Signal: China nutzt Rohstoff-Dominanz als geopolitische Waffe im Chip-Krieg gegen USA.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">Jan 2025</div>
+          <div class="event-text"><strong>China stoppt kritische Mineralien-Exporte in die USA</strong><span>Antwort auf US-Chip-Sanktionen. Dysprosium, Terbium, Gadolinium – Exportverbote verhängt. Westen in Alarmbereitschaft.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">2025</div>
+          <div class="event-text"><strong>EU Critical Raw Materials Act tritt in Kraft</strong><span>EU will bis 2030: 10% Eigenabbau, 40% eigene Verarbeitung, max. 65% Abhängigkeit von einem Land. Milliarden investiert.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Elemente -->
+  <div class="card">
+    <div class="card-title">Die wichtigsten Seltenen Erden – Was steckt wo drin?</div>
+    <div class="element-grid">
+      <div class="element-card">
+        <div class="element-top">
+          <div class="element-symbol">Nd</div>
+          <div class="element-num">60</div>
+        </div>
+        <div class="element-name">Neodym</div>
+        <div class="element-use">🚗 E-Auto-Motoren · 💨 Windkraft-Generatoren · 🔊 Lautsprecher. Stärkster Permanentmagnet der Welt (NdFeB). Pro E-Auto: ~1.5 kg.</div>
+        <div class="element-price">$68/kg · Nachfrage ×4 bis 2030</div>
+      </div>
+      <div class="element-card">
+        <div class="element-top">
+          <div class="element-symbol">Dy</div>
+          <div class="element-num">66</div>
+        </div>
+        <div class="element-name">Dysprosium</div>
+        <div class="element-use">🚗 Hitzebeständige E-Motoren · 🎯 Militär-Lenkwaffen · Macht Neodym-Magnete bis 200°C stabil.</div>
+        <div class="element-price">$250/kg · China kontrolliert 99%</div>
+      </div>
+      <div class="element-card">
+        <div class="element-top">
+          <div class="element-symbol">Tb</div>
+          <div class="element-num">65</div>
+        </div>
+        <div class="element-name">Terbium</div>
+        <div class="element-use">💡 LED-Leuchtstoffe (grünes Licht) · 📱 Smartphone-Displays · 🛡️ Marineschiffe & Sonar-Systeme.</div>
+        <div class="element-price">$1.350/kg · Teuerste Seltene Erde</div>
+      </div>
+      <div class="element-card">
+        <div class="element-top">
+          <div class="element-symbol">La</div>
+          <div class="element-num">57</div>
+        </div>
+        <div class="element-name">Lanthan</div>
+        <div class="element-use">🔋 Hybrid-Auto-Akkus (NiMH) · 🔭 Kameralinsen & Teleskope · 🛢️ Ölraffinerie-Katalysatoren.</div>
+        <div class="element-price">$1.80/kg · Häufigstes SE-Element</div>
+      </div>
+      <div class="element-card">
+        <div class="element-top">
+          <div class="element-symbol">Ce</div>
+          <div class="element-num">58</div>
+        </div>
+        <div class="element-name">Cer</div>
+        <div class="element-use">💎 Polierpulver für Bildschirme & Solarpanele · 🚗 Auto-Katalysatoren · 🏭 Stahlproduktion & Glasfärbung.</div>
+        <div class="element-price">$2.10/kg · Häufig & günstig</div>
+      </div>
+      <div class="element-card">
+        <div class="element-top">
+          <div class="element-symbol">Eu</div>
+          <div class="element-num">63</div>
+        </div>
+        <div class="element-name">Europium</div>
+        <div class="element-use">💡 Rotes Leuchtstoff-Licht in LEDs · 📺 Alte Röhrenbildschirme · 💶 Euro-Banknoten-Sicherheitsmerkmale.</div>
+        <div class="element-price">$28/kg · Nachfrage sinkend</div>
+      </div>
+      <div class="element-card">
+        <div class="element-top">
+          <div class="element-symbol">Y</div>
+          <div class="element-num">39</div>
+        </div>
+        <div class="element-name">Yttrium</div>
+        <div class="element-use">🔬 Hochtemperatur-Supraleiter · ⚕️ Krebstherapie (radioaktiv) · 🏭 Turbinenschaufeln in Flugzeug-Triebwerken.</div>
+        <div class="element-price">$3.50/kg · Medizin & Aerospace</div>
+      </div>
+      <div class="element-card">
+        <div class="element-top">
+          <div class="element-symbol">Pr</div>
+          <div class="element-num">59</div>
+        </div>
+        <div class="element-name">Praseodym</div>
+        <div class="element-use">🚗 Gemeinsam mit Neodym: Didym-Magnete · ✈️ Flugzeugmotoren · 🌿 Grünes Glas für Schutzbrillen.</div>
+        <div class="element-price">$62/kg · Eng mit Nd verknüpft</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Produzenten -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Wer baut ab? – Top Produzenten 2024 (Tausend Tonnen)</div>
+      <div class="producer-list">
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇨🇳</span> China</div>
+            <div><strong>240.000 t</strong> <span style="color:var(--red);font-size:0.75rem">⚠ ~69% der Welt</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:100%;background:linear-gradient(90deg,#ef4444,#f97316)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇺🇸</span> USA (Mountain Pass)</div>
+            <div><strong>43.000 t</strong> <span style="color:var(--green);font-size:0.75rem">▲ wächst</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:18%;background:linear-gradient(90deg,#3b82f6,#60a5fa)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇦🇺</span> Australien (Mt. Weld)</div>
+            <div><strong>18.000 t</strong> <span style="color:var(--green);font-size:0.75rem">▲ Lynas Corp.</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:8%;background:linear-gradient(90deg,#22c55e,#86efac)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇲🇲</span> Myanmar</div>
+            <div><strong>38.000 t</strong> <span style="color:var(--amber);font-size:0.75rem">⚠ instabil</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:16%;background:linear-gradient(90deg,#f59e0b,#fcd34d)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇷🇺</span> Russland</div>
+            <div><strong>2.600 t</strong> <span style="color:var(--muted);font-size:0.75rem">Sanktioniert</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:3%;background:linear-gradient(90deg,#8b5cf6,#a78bfa)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇮🇳</span> Indien</div>
+            <div><strong>2.900 t</strong> <span style="color:var(--green);font-size:0.75rem">▲ stark wachsend</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:4%;background:linear-gradient(90deg,#f97316,#fed7aa)"></div></div>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:10px 12px;background:var(--card2);border-radius:8px;font-size:0.77rem;color:var(--subtle);line-height:1.6">
+        ⚠️ <strong style="color:var(--text)">Kritisch:</strong> Abbau ≠ Verarbeitung. Die USA fördern 18% – aber schicken fast alles nach China zur Verarbeitung. <strong style="color:var(--accent)">China verarbeitet ~85% aller Seltenen Erden weltweit.</strong> Das ist die eigentliche Abhängigkeit.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Abbau vs. Verarbeitung – Das versteckte Monopol</div>
+      <div class="chart-wrap-sm"><canvas id="monopolChart"></canvas></div>
+      <div style="margin-top:16px;padding:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;font-size:0.78rem;line-height:1.6;color:var(--subtle)">
+        🔴 <strong style="color:var(--text)">Das echte Problem:</strong> Selbst wenn ein Land Seltene Erden abbaut – es braucht China, um sie zu verarbeiten. Raffinierung, Trennung, Legierung: alles in China. Ein Exportverbot würde <strong style="color:var(--red)">E-Auto-Produktion, Windparks und Rüstungsindustrie</strong> innerhalb von Monaten lahmlegen.
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 4: Supply Chain -->
+  <div class="card">
+    <div class="card-title">Die globale Lieferkette – Von der Mine zum Endprodukt</div>
+    <div class="chain">
+      <div class="chain-step">
+        <div class="chain-icon">⛏️</div>
+        <div class="chain-title">Abbau</div>
+        <div class="chain-detail">SE-Erz aus Bergwerken &<br/>Ionenaustauschminen</div>
+        <div class="chain-flag">🇨🇳 69% · 🇺🇸 12% · 🇦🇺 5%</div>
+      </div>
+      <div class="chain-step">
+        <div class="chain-icon">⚗️</div>
+        <div class="chain-title">Aufbereitung</div>
+        <div class="chain-detail">Erz konzentrieren,<br/>Verunreinigungen entfernen</div>
+        <div class="chain-flag">🇨🇳 ~80% · 🇲🇾 Lynas</div>
+      </div>
+      <div class="chain-step">
+        <div class="chain-icon">🧪</div>
+        <div class="chain-title">Raffination</div>
+        <div class="chain-detail">Trennung der 17 Elemente<br/>(extrem komplex, giftig)</div>
+        <div class="chain-flag">🇨🇳 ~85% Monopol</div>
+      </div>
+      <div class="chain-step">
+        <div class="chain-icon">🧲</div>
+        <div class="chain-title">Magnete</div>
+        <div class="chain-detail">NdFeB-Magnete pressen<br/>& magnetisieren</div>
+        <div class="chain-flag">🇨🇳 ~90% · 🇯🇵 Shin-Etsu</div>
+      </div>
+      <div class="chain-step">
+        <div class="chain-icon">🏭</div>
+        <div class="chain-title">Komponenten</div>
+        <div class="chain-detail">Motoren, Generatoren,<br/>Festplatten, Sensoren</div>
+        <div class="chain-flag">🇨🇳 🇯🇵 🇩🇪 🇰🇷</div>
+      </div>
+      <div class="chain-step">
+        <div class="chain-icon">🚗</div>
+        <div class="chain-title">Endprodukt</div>
+        <div class="chain-detail">E-Auto · Windrad<br/>Smartphone · Rakete</div>
+        <div class="chain-flag">🌍 Weltweit</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 5: Treiber + Charts -->
+  <div>
+    <div class="card-title" style="margin-bottom:16px">Warum sind Seltene Erden strategisch so wichtig? – 4 Dimensionen</div>
+    <div class="row-4">
+      <div class="driver-card">
+        <div class="driver-icon">⚡</div>
+        <div class="driver-title">Energiewende</div>
+        <div class="driver-text">Jede Windturbine (3 MW) braucht ~2 Tonnen Neodym. Jedes E-Auto ~1.5 kg. Bis 2030 steigt Neodym-Nachfrage um 400%. Ohne SE: keine Klimaneutralität.</div>
+        <div class="driver-impact impact-high">⬆ Nachfrage ×4 bis 2030</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">🎯</div>
+        <div class="driver-title">Rüstung & Sicherheit</div>
+        <div class="driver-text">F-35 Kampfjet: 417 kg Seltene Erden. Tomahawk-Rakete: Neodym-Magnete. Lenkwaffen, Radar, Nachtsicht – alles SE-abhängig. USA kauft von China für eigene Waffen.</div>
+        <div class="driver-impact impact-high">🔴 Kritisches Sicherheitsrisiko</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">📱</div>
+        <div class="driver-title">Consumer Electronics</div>
+        <div class="driver-text">Smartphone: ~16 verschiedene SE-Elemente. Lautsprecher (Nd), Vibrationsmotor (Nd), Display (Eu, Tb, Y), Kamera (La). Kein Handy ohne China-Rohstoffe.</div>
+        <div class="driver-impact impact-med">→ 1,4 Mrd Phones/Jahr</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">🌍</div>
+        <div class="driver-title">Geopolitik & Entkopplung</div>
+        <div class="driver-text">USA, EU, Japan & Australien bauen "Mineral Security Partnership". Ziel: Lieferketten aus China herauslösen. Braucht aber 10-15 Jahre & Milliarden Investitionen.</div>
+        <div class="driver-impact impact-high">⚠ Jahrzehntelange Aufgabe</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 6: Charts -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Nachfrage-Prognose nach Sektor (Index 2024=100)</div>
+      <div class="chart-wrap-sm"><canvas id="demandChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Wo liegen die größten Reserven? (Mio. Tonnen)</div>
+      <div class="chart-wrap-sm"><canvas id="reserveChart"></canvas></div>
+      <div style="margin-top:10px;font-size:0.76rem;color:var(--subtle);line-height:1.5">
+        💡 <strong style="color:var(--text)">Überraschung:</strong> Vietnam und Brasilien haben riesige Reserven – aber keine Verarbeitungskapazitäten. Potenzielle Alternativen zu China, falls Investitionen kommen.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Seltene Erden Dashboard · Daten: USGS, IEA, European Commission, Adamas Intelligence · Stand Mai 2025 ·
+  Erstellt für <a href="https://joshua64267.github.io/portfolio">Joshua Müller Portfolio</a>
+</footer>
+
+<script>
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// ── PRICE CHART ───────────────────────────────────────
+const priceLabels = ['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
+const ndPrice = [42, 38, 52, 68, 44, 42, 88, 120, 75, 68, 68];
+const dyDiv5  = [38, 28, 34, 45, 36, 38, 54, 68, 56, 50, 50]; // Dy /5
+const tbDiv20 = [36, 30, 38, 46, 37, 36, 52, 72, 75, 68, 68]; // Tb /20
+
+const ctx1 = document.getElementById('priceChart').getContext('2d');
+const gradNd = ctx1.createLinearGradient(0,0,0,280);
+gradNd.addColorStop(0,'rgba(167,139,250,0.2)');
+gradNd.addColorStop(1,'rgba(167,139,250,0.01)');
+
+new Chart(ctx1, {
+  type: 'line',
+  data: {
+    labels: priceLabels,
+    datasets: [
+      { label: 'Neodym ($/kg)',       data: ndPrice, borderColor: '#a78bfa', backgroundColor: gradNd, borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#a78bfa', fill: true, tension: 0.3 },
+      { label: 'Dysprosium (÷5)',     data: dyDiv5,  borderColor: '#38bdf8', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3 },
+      { label: 'Terbium (÷20)',       data: tbDiv20, borderColor: '#f59e0b', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, borderDash: [4,3], tension: 0.3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1,
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y}` }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => '$' + v } }
+    }
+  }
+});
+
+// ── MONOPOL CHART (Donut) ─────────────────────────────
+new Chart(document.getElementById('monopolChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['🇨🇳 China', '🇺🇸 USA', '🇦🇺 Australien', '🇲🇲 Myanmar', '🌍 Rest'],
+    datasets: [
+      {
+        label: 'Abbau',
+        data: [69, 12, 5, 11, 3],
+        backgroundColor: ['rgba(239,68,68,0.8)','rgba(59,130,246,0.8)','rgba(34,197,94,0.8)','rgba(245,158,11,0.8)','rgba(100,116,139,0.8)'],
+        borderColor: '#080c14', borderWidth: 3
+      },
+      {
+        label: 'Verarbeitung',
+        data: [85, 5, 4, 2, 4],
+        backgroundColor: ['rgba(239,68,68,0.4)','rgba(59,130,246,0.4)','rgba(34,197,94,0.4)','rgba(245,158,11,0.4)','rgba(100,116,139,0.4)'],
+        borderColor: '#080c14', borderWidth: 3
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'right', labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } },
+      tooltip: {
+        backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1,
+        callbacks: {
+          label: ctx => {
+            const label = ctx.datasetIndex === 0 ? 'Abbau' : 'Verarbeitung';
+            return ` ${label}: ${ctx.parsed}%`;
+          }
+        }
+      }
+    }
+  }
+});
+
+// ── DEMAND FORECAST ───────────────────────────────────
+new Chart(document.getElementById('demandChart'), {
+  type: 'bar',
+  data: {
+    labels: ['2024','2025e','2026e','2027e','2028e','2030e'],
+    datasets: [
+      { label: '⚡ E-Mobilität',   data: [100,125,158,195,242,380], backgroundColor: 'rgba(167,139,250,0.75)', borderRadius: 4 },
+      { label: '💨 Windkraft',     data: [100,118,138,162,190,265], backgroundColor: 'rgba(56,189,248,0.75)',  borderRadius: 4 },
+      { label: '📱 Electronics',   data: [100,104,108,112,116,125], backgroundColor: 'rgba(245,158,11,0.75)',  borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#94a3b8', boxWidth: 12 } },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1 }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' }, stacked: false },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => v + '' } }
+    }
+  }
+});
+
+// ── RESERVES CHART ────────────────────────────────────
+new Chart(document.getElementById('reserveChart'), {
+  type: 'bar',
+  data: {
+    labels: ['🇨🇳 China','🇻🇳 Vietnam','🇧🇷 Brasilien','🇷🇺 Russland','🇮🇳 Indien','🇦🇺 Australien','🇺🇸 USA'],
+    datasets: [{
+      label: 'Reserven (Mio. Tonnen)',
+      data: [44, 22, 21, 21, 6.9, 4.1, 1.8],
+      backgroundColor: [
+        'rgba(239,68,68,0.75)',
+        'rgba(167,139,250,0.75)',
+        'rgba(34,197,94,0.75)',
+        'rgba(56,189,248,0.75)',
+        'rgba(245,158,11,0.75)',
+        'rgba(34,197,94,0.5)',
+        'rgba(59,130,246,0.75)'
+      ],
+      borderRadius: 4
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1 }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => v + 'M t' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
