@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Globale Lebensmittel-Rohstoffe Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #080c14;
+      --card: #0f1520;
+      --card2: #131c2b;
+      --border: #1e2d42;
+      --accent: #22c55e;
+      --accent2: #3b82f6;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --subtle: #94a3b8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* TICKER */
+    .ticker {
+      background: #0a0f1a;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 24px;
+      display: flex; gap: 28px;
+      font-size: 0.78rem; overflow-x: auto;
+    }
+    .ticker-item { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+    .ticker-item .label { color: var(--muted); }
+    .ticker-item .val { font-weight: 600; }
+    .up { color: #22c55e; } .down { color: #ef4444; }
+
+    /* HEADER */
+    header {
+      padding: 28px 32px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: flex-end;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .header-left h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
+    .header-left h1 span { color: var(--accent); }
+    .header-left p { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+    .header-right { display: flex; gap: 12px; flex-wrap: wrap; }
+    .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; text-align: center; min-width: 120px; }
+    .kpi .kpi-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi .kpi-val { font-size: 1.4rem; font-weight: 700; margin-top: 2px; }
+    .kpi .kpi-sub { font-size: 0.75rem; margin-top: 2px; }
+
+    /* LAYOUT */
+    main { padding: 24px 32px; display: grid; gap: 24px; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+    .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    @media (max-width: 1100px) { .row-2 { grid-template-columns: 1fr; } .row-3 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 700px) { .row-3, .row-4 { grid-template-columns: 1fr 1fr; } main { padding: 16px; } }
+
+    /* CARDS */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .card-title {
+      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--muted); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-title::before {
+      content: ''; display: inline-block;
+      width: 3px; height: 12px;
+      background: var(--accent); border-radius: 2px;
+    }
+
+    /* CHARTS */
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap-sm { position: relative; height: 200px; }
+
+    /* EVENTS */
+    .events { display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto; }
+    .event-item {
+      display: flex; gap: 12px; padding: 10px 12px;
+      background: var(--card2); border-radius: 8px;
+      border-left: 3px solid var(--accent); align-items: flex-start;
+    }
+    .event-item.neg { border-left-color: var(--red); }
+    .event-item.pos { border-left-color: var(--accent); }
+    .event-item.neu { border-left-color: var(--accent2); }
+    .event-item.warn { border-left-color: var(--amber); }
+    .event-date { font-size: 0.72rem; color: var(--muted); white-space: nowrap; min-width: 54px; margin-top: 2px; }
+    .event-text { font-size: 0.82rem; line-height: 1.4; }
+    .event-text strong { color: var(--text); display: block; margin-bottom: 2px; }
+    .event-text span { color: var(--subtle); }
+
+    /* PRODUCER BARS */
+    .producer-list { display: flex; flex-direction: column; gap: 12px; }
+    .producer-item { }
+    .producer-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.83rem; }
+    .producer-header .country { display: flex; align-items: center; gap: 6px; }
+    .producer-bar-bg { background: var(--card2); border-radius: 4px; height: 8px; overflow: hidden; }
+    .producer-bar { height: 8px; border-radius: 4px; transition: width 1s ease; }
+
+    /* COMMODITY CARDS */
+    .commodity-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 900px) { .commodity-grid { grid-template-columns: 1fr 1fr; } }
+    .commodity-card {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px;
+    }
+    .commodity-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .commodity-icon { font-size: 1.8rem; }
+    .commodity-name { font-size: 0.9rem; font-weight: 600; }
+    .commodity-price { font-size: 0.78rem; color: var(--muted); }
+    .commodity-stat { font-size: 0.75rem; color: var(--subtle); margin-top: 4px; line-height: 1.5; }
+    .commodity-tag {
+      display: inline-block; margin-top: 8px;
+      border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; font-weight: 600;
+    }
+
+    /* DRIVER CARDS */
+    .driver-card { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .driver-icon { font-size: 1.8rem; margin-bottom: 8px; }
+    .driver-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; }
+    .driver-text { font-size: 0.78rem; color: var(--subtle); line-height: 1.5; }
+    .driver-impact { margin-top: 10px; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; display: inline-block; font-weight: 600; }
+    .impact-high { background: rgba(239,68,68,0.15); color: var(--red); }
+    .impact-med  { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .impact-low  { background: rgba(59,130,246,0.15);  color: var(--accent2); }
+
+    /* LEGEND */
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--subtle); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* FLOW DIAGRAM */
+    .flow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .flow-box {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px;
+      text-align: center; flex: 1; min-width: 80px;
+    }
+    .flow-box .flow-icon { font-size: 1.4rem; }
+    .flow-box .flow-label { font-size: 0.7rem; color: var(--subtle); margin-top: 4px; }
+    .flow-box .flow-val { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+    .flow-arrow { font-size: 1.2rem; color: var(--muted); }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    footer { text-align: center; padding: 24px; color: var(--muted); font-size: 0.78rem; border-top: 1px solid var(--border); }
+    footer a { color: var(--accent2); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-item"><span class="label">Weizen (CBOT)</span><span class="val">$5.42/bu</span><span class="down">▼ -2.1%</span></div>
+  <div class="ticker-item"><span class="label">Mais</span><span class="val">$4.38/bu</span><span class="down">▼ -0.8%</span></div>
+  <div class="ticker-item"><span class="label">Soja</span><span class="val">$11.20/bu</span><span class="up">▲ +0.4%</span></div>
+  <div class="ticker-item"><span class="label">Reis</span><span class="val">$15.80/cwt</span><span class="down">▼ -0.3%</span></div>
+  <div class="ticker-item"><span class="label">Ammoniak</span><span class="val">$320/t</span><span class="up">▲ +1.2%</span></div>
+  <div class="ticker-item"><span class="label">Harnstoff</span><span class="val">$285/t</span><span class="up">▲ +0.6%</span></div>
+  <div class="ticker-item"><span class="label">Erdgas (TTF)</span><span class="val">€32/MWh</span><span class="down">▼ -1.5%</span></div>
+  <div class="ticker-item"><span class="label">Palmöl</span><span class="val">$890/t</span><span class="up">▲ +0.9%</span></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <h1>Globale <span>Lebensmittel-Rohstoffe</span></h1>
+    <p>Von der Erde zum Teller · Rohstoffe, Dünger, Produktion & Preistreiber · Stand Mai 2025</p>
+  </div>
+  <div class="header-right">
+    <div class="kpi">
+      <div class="kpi-label">Weltbevölkerung</div>
+      <div class="kpi-val" style="color:var(--accent)">8.2 Mrd</div>
+      <div class="kpi-sub up">▲ +80M/Jahr</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Hungernde</div>
+      <div class="kpi-val" style="color:var(--red)">733 Mio</div>
+      <div class="kpi-sub down">▲ seit COVID</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">FAO Index 2025</div>
+      <div class="kpi-val">118.4</div>
+      <div class="kpi-sub down">▼ vs. Peak 2022</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Weizen Ernte</div>
+      <div class="kpi-val">785 Mio t</div>
+      <div class="kpi-sub" style="color:var(--muted)">2024 weltweit</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ROW 1: Weizenpreis + Events -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Weizenpreis 2020–2025 ($/Bushel, CBOT)</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> Weizen</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Mais</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Soja</div>
+      </div>
+      <div class="chart-wrap"><canvas id="grainChart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Was hat die Preise bewegt?</div>
+      <div class="events">
+        <div class="event-item warn">
+          <div class="event-date">2020</div>
+          <div class="event-text"><strong>COVID stört globale Lieferketten</strong><span>Häfen geschlossen, Ernte-Arbeitskräfte fehlen. Erste Hamsterkäufe – Länder schränken Getreideexporte ein.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">2021</div>
+          <div class="event-text"><strong>Energiepreise explodieren → Düngerkrise</strong><span>Erdgas = Hauptrohstoff für Ammoniak/Harnstoff. Gaspreise ×4 → Düngerpreise ×3 → Bauern düngen weniger → kleinere Ernten.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">Feb 2022</div>
+          <div class="event-text"><strong>Ukraine-Krieg: Weizen explodiert auf $13/bu!</strong><span>Ukraine + Russland = 30% der globalen Weizenexporte. Ukraine = "Kornkammer Europas". Häfen am Schwarzen Meer gesperrt.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">Jul 2022</div>
+          <div class="event-text"><strong>Indien stoppt Weizenexporte</strong><span>Hitzewelle zerstört Ernte. Indien schützt eigene Bevölkerung → globales Angebot schrumpft weiter.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">Jul 2022</div>
+          <div class="event-text"><strong>Getreide-Abkommen Ukraine/Russland/UN</strong><span>Häfen am Schwarzen Meer öffnen wieder. Exporte fließen → Preise fallen von $13 auf $7.</span></div>
+        </div>
+        <div class="event-item warn">
+          <div class="event-date">2023</div>
+          <div class="event-text"><strong>El Niño: Dürren in Südamerika & Australien</strong><span>Soja-Ernte in Brasilien -15%. Weizen in Australien unter Durchschnitt. Wetter wird zur Waffe.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">Jul 2023</div>
+          <div class="event-text"><strong>Russland kündigt Getreide-Abkommen</strong><span>Ukraine-Exporte wieder blockiert. Kurzer Preissprung, dann Entspannung durch alternative Routen.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">2024–25</div>
+          <div class="event-text"><strong>Rekordernten in Russland & EU drücken Preise</strong><span>Trotz Krieg: Russland fährt Rekordernte ein. Argentinien erholt sich. Preise fallen auf 4-Jahres-Tief.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Schlüssel-Rohstoffe -->
+  <div class="card">
+    <div class="card-title">Die wichtigsten Rohstoffe der Lebensmittelindustrie</div>
+    <div class="commodity-grid">
+      <div class="commodity-card">
+        <div class="commodity-header">
+          <div class="commodity-icon">🌾</div>
+          <div><div class="commodity-name">Weizen</div><div class="commodity-price">$5.42/Bushel</div></div>
+        </div>
+        <div class="commodity-stat">Basis für Brot, Nudeln, Mehl. 785 Mio Tonnen/Jahr geerntet. Top-Exporteure: Russland, EU, Australien, USA, Ukraine.</div>
+        <span class="commodity-tag" style="background:rgba(34,197,94,0.15);color:#22c55e">⬇ -60% seit Peak 2022</span>
+      </div>
+      <div class="commodity-card">
+        <div class="commodity-header">
+          <div class="commodity-icon">🌽</div>
+          <div><div class="commodity-name">Mais</div><div class="commodity-price">$4.38/Bushel</div></div>
+        </div>
+        <div class="commodity-stat">Tierfutter, Bioethanol, Stärke, Süßungsmittel. 1.2 Mrd Tonnen/Jahr. USA = 32% der Weltproduktion. Auch: Basis für Corn Syrup in Softdrinks.</div>
+        <span class="commodity-tag" style="background:rgba(245,158,11,0.15);color:#f59e0b">→ stabil 2024/25</span>
+      </div>
+      <div class="commodity-card">
+        <div class="commodity-header">
+          <div class="commodity-icon">🫘</div>
+          <div><div class="commodity-name">Sojabohnen</div><div class="commodity-price">$11.20/Bushel</div></div>
+        </div>
+        <div class="commodity-stat">Sojaöl (Frittieren, Margarine), Sojaschrot (Hühnerfutter). Brasilien überholt USA als #1. China importiert 60% der weltweiten Produktion.</div>
+        <span class="commodity-tag" style="background:rgba(59,130,246,0.15);color:#3b82f6">🇧🇷 Brasilien dominiert</span>
+      </div>
+      <div class="commodity-card">
+        <div class="commodity-header">
+          <div class="commodity-icon">🧪</div>
+          <div><div class="commodity-name">Ammoniak (NH₃)</div><div class="commodity-price">$320/Tonne</div></div>
+        </div>
+        <div class="commodity-stat">Basis für 80% aller Stickstoffdünger. Herstellung: Haber-Bosch-Prozess braucht massiv Erdgas. Ohne Ammoniak: 40-50% weniger Ernte weltweit.</div>
+        <span class="commodity-tag" style="background:rgba(239,68,68,0.15);color:#ef4444">⚡ Erdgas-abhängig</span>
+      </div>
+      <div class="commodity-card">
+        <div class="commodity-header">
+          <div class="commodity-icon">🌴</div>
+          <div><div class="commodity-name">Palmöl</div><div class="commodity-price">$890/Tonne</div></div>
+        </div>
+        <div class="commodity-stat">In 50% aller Supermarkt-Produkte. Billigstes Speiseöl der Welt. Indonesien + Malaysia = 85% der Weltproduktion. Kontrovers: Regenwald-Abholzung.</div>
+        <span class="commodity-tag" style="background:rgba(245,158,11,0.15);color:#f59e0b">🇮🇩 Indonesien #1</span>
+      </div>
+      <div class="commodity-card">
+        <div class="commodity-header">
+          <div class="commodity-icon">🍚</div>
+          <div><div class="commodity-name">Reis</div><div class="commodity-price">$15.80/cwt</div></div>
+        </div>
+        <div class="commodity-stat">Hauptnahrung für 3,5 Mrd Menschen. Asien produziert 90%. Indien = größter Exporteur, aber 2023 Exportbann → Preise +40%. Thailand, Vietnam als Backup.</div>
+        <span class="commodity-tag" style="background:rgba(239,68,68,0.15);color:#ef4444">⬆ +40% 2023 Krise</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Produzenten -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Top Weizenproduzenten 2024 (Mio. Tonnen)</div>
+      <div class="producer-list">
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇨🇳</span> China</div>
+            <div><strong>140 Mio t</strong> <span style="color:var(--muted);font-size:0.75rem"> — v.a. Eigenversorgung</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:100%;background:linear-gradient(90deg,#ef4444,#f97316)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇮🇳</span> Indien</div>
+            <div><strong>108 Mio t</strong> <span style="color:var(--muted);font-size:0.75rem"> — Export 2023 gestoppt</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:77%;background:linear-gradient(90deg,#f59e0b,#fcd34d)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇷🇺</span> Russland</div>
+            <div><strong>92 Mio t</strong> <span style="color:var(--accent);font-size:0.75rem"> ▲ Rekord 2024</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:66%;background:linear-gradient(90deg,#22c55e,#86efac)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇺🇸</span> USA</div>
+            <div><strong>52 Mio t</strong></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:37%;background:linear-gradient(90deg,#3b82f6,#60a5fa)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇦🇺</span> Australien</div>
+            <div><strong>34 Mio t</strong></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:24%;background:linear-gradient(90deg,#8b5cf6,#a78bfa)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇺🇦</span> Ukraine</div>
+            <div><strong>22 Mio t</strong> <span style="color:var(--red);font-size:0.75rem"> ▼ Krieg</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:16%;background:linear-gradient(90deg,#ef4444,#fca5a5)"></div></div>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:10px 12px;background:var(--card2);border-radius:8px;font-size:0.77rem;color:var(--subtle);line-height:1.6">
+        💡 <strong style="color:var(--text)">Wichtig:</strong> China & Indien produzieren massiv – aber hauptsächlich für sich selbst. Den Weltmarkt bestimmen <strong style="color:var(--accent)">Russland, EU, Australien, USA & Ukraine</strong>. Fällt einer aus, steigen Preise sofort.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Ammoniak – Wo wird Dünger produziert?</div>
+      <div class="producer-list">
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇨🇳</span> China</div>
+            <div><strong>33%</strong> <span style="color:var(--muted);font-size:0.75rem">der Weltproduktion</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:100%;background:linear-gradient(90deg,#ef4444,#f97316)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇷🇺</span> Russland</div>
+            <div><strong>12%</strong> <span style="color:var(--red);font-size:0.75rem">⚠ Sanktionen</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:36%;background:linear-gradient(90deg,#22c55e,#86efac)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇮🇳</span> Indien</div>
+            <div><strong>8%</strong> <span style="color:var(--muted);font-size:0.75rem">wächst stark</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:24%;background:linear-gradient(90deg,#f59e0b,#fcd34d)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇺🇸</span> USA</div>
+            <div><strong>7%</strong></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:21%;background:linear-gradient(90deg,#3b82f6,#60a5fa)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇸🇦</span> Saudi-Arabien / Naher Osten</div>
+            <div><strong>6%</strong> <span style="color:var(--accent);font-size:0.75rem">billiges Gas</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:18%;background:linear-gradient(90deg,#8b5cf6,#a78bfa)"></div></div>
+        </div>
+      </div>
+
+      <!-- Flow Diagram -->
+      <div style="margin-top:16px">
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">Produktionskette: Vom Gas zum Essen 🔗</div>
+        <div class="flow">
+          <div class="flow-box">
+            <div class="flow-icon">⛽</div>
+            <div class="flow-val">Erdgas</div>
+            <div class="flow-label">Rohstoff</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">
+            <div class="flow-icon">🧪</div>
+            <div class="flow-val">NH₃</div>
+            <div class="flow-label">Ammoniak</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">
+            <div class="flow-icon">🌱</div>
+            <div class="flow-val">Harnstoff</div>
+            <div class="flow-label">Stickstoff-Dünger</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">
+            <div class="flow-icon">🌾</div>
+            <div class="flow-val">+40% Ernte</div>
+            <div class="flow-label">Ertrag</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">
+            <div class="flow-icon">🍞</div>
+            <div class="flow-val">Lebensmittel</div>
+            <div class="flow-label">Endprodukt</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 4: Preistreiber -->
+  <div>
+    <div class="card-title" style="margin-bottom:16px">Was treibt die Lebensmittelpreise? – Die 4 großen Kräfte</div>
+    <div class="row-4">
+      <div class="driver-card">
+        <div class="driver-icon">⛽</div>
+        <div class="driver-title">Energie & Düngerpreise</div>
+        <div class="driver-text">Erdgas ist der Schlüssel: 80% der Düngemittelkosten. Steigt der Gaspreis, steigen Düngerpreise, steigen Lebensmittelpreise. 2021/22: Gas ×4 → Dünger ×3 → Weizen ×2.</div>
+        <div class="driver-impact impact-high">⬆ Größter Hebel</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">☁️</div>
+        <div class="driver-title">Klima & Wetter</div>
+        <div class="driver-text">Dürren, Überschwemmungen, El Niño – Extremwetter vernichtet Ernten. 2022: Hitzewelle in Indien. 2023: El Niño in Südamerika. Klimawandel macht das häufiger.</div>
+        <div class="driver-impact impact-high">⬆ Wächst jährlich</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">⚔️</div>
+        <div class="driver-title">Geopolitik & Exportverbote</div>
+        <div class="driver-text">Ukraine-Krieg sperrte 30% der Weizenexporte. Indien stoppte Reisexporte 2023. Länder priorisieren Eigenversorgung → globales Angebot schrumpft, Preise explodieren.</div>
+        <div class="driver-impact impact-high">⬆ Sehr volatil</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">📈</div>
+        <div class="driver-title">Spekulation & Finanzmarkt</div>
+        <div class="driver-text">Hedge Fonds handeln Weizen-Futures. Bei Krisen kaufen Spekulanten massiv – das verstärkt Preisanstiege. UN-Kritik: "Finanzspekulation macht Hunger schlimmer."</div>
+        <div class="driver-impact impact-med">→ Mittlerer Einfluss</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 5: Charts -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">FAO Lebensmittelpreis-Index 2019–2025</div>
+      <div class="chart-wrap-sm"><canvas id="faoChart"></canvas></div>
+      <div style="margin-top:10px;font-size:0.76rem;color:var(--subtle);line-height:1.5">
+        📊 Der <strong style="color:var(--text)">FAO Food Price Index</strong> misst die durchschnittlichen Weltmarktpreise für Getreide, Ölsaaten, Milch, Fleisch und Zucker. Peak März 2022: 159.7 – höchster Wert seit Messbeginn.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Mais & Soja Produktion Top 3 (Mio. Tonnen/Jahr)</div>
+      <div class="chart-wrap-sm"><canvas id="cropChart"></canvas></div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Globale Lebensmittel-Rohstoffe · Daten: FAO, USDA, OPEC, World Bank · Stand Mai 2025 ·
+  Erstellt für <a href="https://joshua64267.github.io/portfolio">Joshua Müller Portfolio</a>
+</footer>
+
+<script>
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// ── GRAIN PRICES 2020–2025 ────────────────────────────
+const labels = [
+  'Jan 20','Apr 20','Jul 20','Okt 20',
+  'Jan 21','Apr 21','Jul 21','Okt 21',
+  'Jan 22','Apr 22','Jul 22','Okt 22',
+  'Jan 23','Apr 23','Jul 23','Okt 23',
+  'Jan 24','Apr 24','Jul 24','Okt 24',
+  'Jan 25','Apr 25'
+];
+const wheat = [5.6, 5.1, 4.7, 5.9, 6.6, 7.2, 7.5, 7.9, 8.8, 11.2, 8.3, 8.1, 7.1, 6.7, 6.2, 5.9, 6.1, 5.9, 5.5, 5.7, 5.4, 5.4];
+const corn  = [3.8, 3.3, 3.4, 4.1, 5.0, 5.8, 5.6, 5.2, 5.8, 7.6, 5.8, 6.8, 6.2, 5.9, 4.9, 4.7, 4.4, 4.3, 4.0, 4.1, 4.2, 4.4];
+const soy   = [9.0, 8.7, 9.2,10.6,12.5,14.2,13.5,12.2,14.5,15.3,14.2,13.8,14.8,14.2,13.0,12.8,12.3,11.8,10.2,10.5,11.0,11.2];
+
+const ctx1 = document.getElementById('grainChart').getContext('2d');
+new Chart(ctx1, {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      { label: 'Weizen ($/bu)', data: wheat, borderColor: '#22c55e', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+      { label: 'Mais ($/bu)',   data: corn,  borderColor: '#f59e0b', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+      { label: 'Soja ($/bu)',   data: soy,   borderColor: '#3b82f6', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1,
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}` }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { maxTicksLimit: 10 } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => '$' + v } }
+    }
+  }
+});
+
+// ── FAO INDEX ─────────────────────────────────────────
+const faoLabels = ['Jan 19','Jul 19','Jan 20','Jul 20','Jan 21','Jul 21','Jan 22','Mär 22','Jul 22','Jan 23','Jul 23','Jan 24','Jul 24','Jan 25'];
+const faoData   = [164.1,169.9,182.5,165.3,113.3,124.6,140.7,159.7,140.9,131.2,122.3,117.8,120.1,118.4];
+const gradFAO = document.getElementById('faoChart').getContext('2d').createLinearGradient(0,0,0,200);
+gradFAO.addColorStop(0,'rgba(34,197,94,0.25)');
+gradFAO.addColorStop(1,'rgba(34,197,94,0.01)');
+new Chart(document.getElementById('faoChart'), {
+  type: 'line',
+  data: {
+    labels: faoLabels,
+    datasets: [{
+      label: 'FAO Index', data: faoData,
+      borderColor: '#22c55e', backgroundColor: gradFAO,
+      borderWidth: 2, fill: true, tension: 0.4, pointRadius: 3,
+      pointBackgroundColor: '#22c55e'
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1 }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, min: 100 }
+    }
+  }
+});
+
+// ── CROP CHART ────────────────────────────────────────
+new Chart(document.getElementById('cropChart'), {
+  type: 'bar',
+  data: {
+    labels: ['🇺🇸 USA', '🇨🇳 China', '🇧🇷 Brasilien', '🇦🇷 Argentinien', '🇺🇦 Ukraine'],
+    datasets: [
+      {
+        label: 'Mais (Mio t)',
+        data: [390, 288, 135, 55, 28],
+        backgroundColor: 'rgba(245,158,11,0.75)', borderRadius: 4
+      },
+      {
+        label: 'Soja (Mio t)',
+        data: [113, 20, 154, 48, 5],
+        backgroundColor: 'rgba(59,130,246,0.75)', borderRadius: 4
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#94a3b8', boxWidth: 12 } },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1 }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => v + 'M' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
