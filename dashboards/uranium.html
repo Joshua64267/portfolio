@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Uran – Die Nuklear-Renaissance</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #080c14;
+      --card: #0f1520;
+      --card2: #131c2b;
+      --border: #1e2d42;
+      --accent: #84cc16;
+      --accent2: #38bdf8;
+      --purple: #a78bfa;
+      --red: #ef4444;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --subtle: #94a3b8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    .ticker { background:#0a0f1a; border-bottom:1px solid var(--border); padding:8px 24px; display:flex; gap:28px; font-size:0.78rem; overflow-x:auto; }
+    .ticker-item { display:flex; gap:8px; align-items:center; white-space:nowrap; }
+    .ticker-item .label { color:var(--muted); }
+    .ticker-item .val { font-weight:600; }
+    .up { color:#22c55e; } .down { color:#ef4444; }
+
+    header { padding:28px 32px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; }
+    .header-left h1 { font-size:1.6rem; font-weight:700; letter-spacing:-0.5px; }
+    .header-left h1 span { color:var(--accent); }
+    .header-left p { color:var(--muted); font-size:0.85rem; margin-top:4px; }
+    .header-right { display:flex; gap:12px; flex-wrap:wrap; }
+    .kpi { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 18px; text-align:center; min-width:120px; }
+    .kpi .kpi-label { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+    .kpi .kpi-val { font-size:1.4rem; font-weight:700; margin-top:2px; }
+    .kpi .kpi-sub { font-size:0.75rem; margin-top:2px; }
+
+    main { padding:24px 32px; display:grid; gap:24px; }
+    .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+    .row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; }
+    .row-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+    @media(max-width:1100px){ .row-2{grid-template-columns:1fr;} .row-3{grid-template-columns:1fr 1fr;} }
+    @media(max-width:700px){ .row-3,.row-4{grid-template-columns:1fr 1fr;} main{padding:16px;} }
+
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+    .card-title { font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+    .card-title::before { content:''; display:inline-block; width:3px; height:12px; background:var(--accent); border-radius:2px; }
+
+    .chart-wrap { position:relative; height:280px; }
+    .chart-wrap-sm { position:relative; height:210px; }
+
+    .events { display:flex; flex-direction:column; gap:10px; max-height:280px; overflow-y:auto; }
+    .event-item { display:flex; gap:12px; padding:10px 12px; background:var(--card2); border-radius:8px; border-left:3px solid var(--accent); align-items:flex-start; }
+    .event-item.neg  { border-left-color:var(--red); }
+    .event-item.pos  { border-left-color:var(--green); }
+    .event-item.warn { border-left-color:var(--amber); }
+    .event-item.neu  { border-left-color:var(--accent2); }
+    .event-date { font-size:0.72rem; color:var(--muted); white-space:nowrap; min-width:54px; margin-top:2px; }
+    .event-text { font-size:0.82rem; line-height:1.4; }
+    .event-text strong { color:var(--text); display:block; margin-bottom:2px; }
+    .event-text span { color:var(--subtle); }
+
+    .producer-list { display:flex; flex-direction:column; gap:12px; }
+    .producer-header { display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.83rem; }
+    .producer-header .country { display:flex; align-items:center; gap:6px; }
+    .producer-bar-bg { background:var(--card2); border-radius:4px; height:8px; overflow:hidden; }
+    .producer-bar { height:8px; border-radius:4px; }
+
+    /* REACTOR GRID */
+    .reactor-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+    @media(max-width:900px){ .reactor-grid{grid-template-columns:1fr 1fr;} }
+    .reactor-card { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:16px; }
+    .reactor-icon { font-size:2rem; margin-bottom:8px; }
+    .reactor-name { font-size:0.9rem; font-weight:600; margin-bottom:5px; }
+    .reactor-text { font-size:0.75rem; color:var(--subtle); line-height:1.5; }
+    .reactor-tag { display:inline-block; margin-top:8px; border-radius:4px; padding:2px 8px; font-size:0.7rem; font-weight:700; }
+
+    .driver-card { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:16px; }
+    .driver-icon { font-size:1.8rem; margin-bottom:8px; }
+    .driver-title { font-size:0.88rem; font-weight:600; margin-bottom:6px; }
+    .driver-text { font-size:0.78rem; color:var(--subtle); line-height:1.5; }
+    .driver-impact { margin-top:10px; font-size:0.72rem; padding:3px 8px; border-radius:4px; display:inline-block; font-weight:600; }
+    .impact-high { background:rgba(239,68,68,0.15); color:var(--red); }
+    .impact-med  { background:rgba(245,158,11,0.15); color:var(--amber); }
+    .impact-bull { background:rgba(132,204,22,0.15);  color:var(--accent); }
+
+    /* REACTOR COUNT BAR */
+    .country-reactors { display:flex; flex-direction:column; gap:10px; }
+    .cr-item { }
+    .cr-header { display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:4px; }
+    .cr-bar-bg { background:var(--card2); border-radius:4px; height:22px; overflow:hidden; display:flex; align-items:center; }
+    .cr-bar { height:22px; border-radius:4px; display:flex; align-items:center; padding-left:8px; font-size:0.7rem; font-weight:700; color:#000; white-space:nowrap; overflow:hidden; }
+
+    .legend { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:8px; }
+    .legend-item { display:flex; align-items:center; gap:5px; font-size:0.75rem; color:var(--subtle); }
+    .legend-dot { width:10px; height:10px; border-radius:50%; }
+
+    ::-webkit-scrollbar { width:4px; height:4px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    footer { text-align:center; padding:24px; color:var(--muted); font-size:0.78rem; border-top:1px solid var(--border); }
+    footer a { color:var(--accent2); text-decoration:none; }
+  </style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-item"><span class="label">Uran (Spot U₃O₈)</span><span class="val">$84/lb</span><span class="down">▼ -0.8%</span></div>
+  <div class="ticker-item"><span class="label">Uran (Term)</span><span class="val">$78/lb</span><span class="down">▼ -0.4%</span></div>
+  <div class="ticker-item"><span class="label">Cameco (CCO)</span><span class="val">$48.20</span><span class="up">▲ +1.2%</span></div>
+  <div class="ticker-item"><span class="label">Kazatomprom (KAP)</span><span class="val">$24.80</span><span class="down">▼ -0.3%</span></div>
+  <div class="ticker-item"><span class="label">Yellow Cake (YCA)</span><span class="val">£6.82</span><span class="up">▲ +0.6%</span></div>
+  <div class="ticker-item"><span class="label">UF₆ Anreicherung</span><span class="val">$160/SWU</span><span class="up">▲ +2.1%</span></div>
+  <div class="ticker-item"><span class="label">Reaktoren weltweit</span><span class="val">440 aktiv</span><span class="up">▲ +8 im Bau</span></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <h1>Uran – <span>Die Nuklear-Renaissance</span></h1>
+    <p>Kernenergie als Klimaretter? · Spotpreis-Analyse · Kazachstan-Monopol · SMR-Revolution · Stand Mai 2025</p>
+  </div>
+  <div class="header-right">
+    <div class="kpi">
+      <div class="kpi-label">Spotpreis</div>
+      <div class="kpi-val" style="color:var(--accent)">$84/lb</div>
+      <div class="kpi-sub up">▲ +180% seit 2020</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Kasachstan</div>
+      <div class="kpi-val" style="color:var(--amber)">43%</div>
+      <div class="kpi-sub" style="color:var(--muted)">der Weltproduktion</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Reaktoren global</div>
+      <div class="kpi-val">440</div>
+      <div class="kpi-sub up">▲ 60 im Bau</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">14-J. Hoch 2024</div>
+      <div class="kpi-val" style="color:var(--red)">$106/lb</div>
+      <div class="kpi-sub" style="color:var(--muted)">Jan 2024</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ROW 1: Preis + Events -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Uranpreis 2005–2025 ($/lb U₃O₈)</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#84cc16"></div> Spotpreis $/lb</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div> Langzeit-Vertragspreis</div>
+      </div>
+      <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Was hat den Preis bewegt?</div>
+      <div class="events">
+        <div class="event-item pos">
+          <div class="event-date">2007</div>
+          <div class="event-text"><strong>Allzeithoch $136/lb – Cigar Lake Überflutung</strong><span>Kanadas größte Mine überschwemmt. Gleichzeitig: Hedgefonds entdecken Uran. Spekulativer Preisboom treibt Spot auf $136 – nie wieder erreicht.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">Mär 2011</div>
+          <div class="event-text"><strong>Fukushima: Preis halbiert sich auf $28!</strong><span>Tsunami in Japan. AKW Fukushima explodiert. Deutschland beschließt Atomausstieg. Japan schaltet alle 54 Reaktoren ab. Nachfrage bricht ein. 10 Jahre Bärenmarkt.</span></div>
+        </div>
+        <div class="event-item warn">
+          <div class="event-date">2011–20</div>
+          <div class="event-text"><strong>9 Jahre Trostlosigkeit – Preise unter $20</strong><span>Reaktoren überschwemmen Markt mit Überangebot. Minen unrentabel. Cameco schließt McArthur River – weltgrößte Highgrade-Mine. Niemand will Uran.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">2021</div>
+          <div class="event-text"><strong>Sprott Physical Uranium Trust kauft physisches Uran</strong><span>Sprott kauft vom offenen Markt direkt Uranpellets und hält sie in Tresoren. Entzieht Angebot vom Spotmarkt. Preis steigt von $30 auf $50 in Monaten.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">Feb 2022</div>
+          <div class="event-text"><strong>Ukraine-Krieg: Russland = 40% der Anreicherung</strong><span>Russland kontrolliert massiv die Urananreicherung (TENEX/Rosatom). USA importieren russisches angereichertes Uran für eigene Reaktoren. Plötzlich kritische Abhängigkeit sichtbar.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">2023</div>
+          <div class="event-text"><strong>Niger-Putsch stoppt Frankreichs Uranlieferungen</strong><span>Niger liefert 15% von Frankreichs Uran. Militärputsch im Juli 2023 → Exportstop. Frankreich (70% Atomstrom) in Alarmbereitschaft. Preis springt.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">Jan 2024</div>
+          <div class="event-text"><strong>14-Jahres-Hoch $106/lb – Institutionelle kaufen</strong><span>Blackrock, Fidelity, große Pensionsfonds entdecken Uran. Kasachstan (43% Weltproduktion) meldet Lieferverzögerungen. Perfekter Sturm. $106 – höchster Preis seit 2008.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">2024–25</div>
+          <div class="event-text"><strong>Nuclear Renaissance: 30+ Länder kehren zu Atom zurück</strong><span>COP28: 22 Länder pledgen Atomkraft zu verdreifachen. Microsoft kauft ganzes AKW (Three Mile Island) für KI-Strom. Belgien, Japan reaktivieren geschlossene Reaktoren.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Produzenten + Reaktoren -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Top Uranproduzenten 2024 (% der Weltproduktion)</div>
+      <div class="producer-list">
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇰🇿</span> Kasachstan (Kazatomprom)</div>
+            <div><strong>43%</strong><span style="color:var(--amber);font-size:0.75rem"> · ISL-Methode, billigste Förderung</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:100%;background:linear-gradient(90deg,#84cc16,#a3e635)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇨🇦</span> Kanada (Cameco – Cigar Lake)</div>
+            <div><strong>15%</strong><span style="color:var(--green);font-size:0.75rem"> · Höchster Erzgehalt weltweit</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:35%;background:linear-gradient(90deg,#38bdf8,#7dd3fc)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇳🇦</span> Namibia (Rössing, Husab)</div>
+            <div><strong>11%</strong><span style="color:var(--muted);font-size:0.75rem"> · Chinesische Beteiligung ▲</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:26%;background:linear-gradient(90deg,#f59e0b,#fcd34d)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇺🇿</span> Usbekistan (Navoi)</div>
+            <div><strong>8%</strong></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:19%;background:linear-gradient(90deg,#a78bfa,#c4b5fd)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇷🇺</span> Russland (Rosatom)</div>
+            <div><strong>6%</strong><span style="color:var(--red);font-size:0.75rem"> ⚠ + 40% Anreicherung!</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:14%;background:linear-gradient(90deg,#ef4444,#f97316)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇦🇺</span> Australien (Olympic Dam)</div>
+            <div><strong>5%</strong><span style="color:var(--muted);font-size:0.75rem"> · Keine inländischen Reaktoren</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:12%;background:linear-gradient(90deg,#22c55e,#86efac)"></div></div>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:10px 12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;font-size:0.77rem;color:var(--subtle);line-height:1.6">
+        ⚠️ <strong style="color:var(--text)">Doppeltes Monopol:</strong> Kasachstan dominiert den Abbau (43%) – aber <strong style="color:var(--red)">Russland kontrolliert ~40% der globalen Urananreicherung</strong>. Ohne Anreicherung kein Reaktorbrennstoff. Westliche Abhängigkeit von Rosatom ist das größte strategische Risiko.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Wer betreibt die meisten Reaktoren? (Aktive AKWs)</div>
+      <div class="country-reactors">
+        <div class="cr-item">
+          <div class="cr-header"><div>🇺🇸 USA</div><div><strong>93</strong> Reaktoren</div></div>
+          <div class="cr-bar-bg"><div class="cr-bar" style="width:100%;background:linear-gradient(90deg,#3b82f6,#60a5fa)">93 AKWs · 97 GW</div></div>
+        </div>
+        <div class="cr-item">
+          <div class="cr-header"><div>🇫🇷 Frankreich</div><div><strong>56</strong> · 70% Atomstrom!</div></div>
+          <div class="cr-bar-bg"><div class="cr-bar" style="width:60%;background:linear-gradient(90deg,#84cc16,#a3e635)">56 AKWs · weltweit höchster Anteil</div></div>
+        </div>
+        <div class="cr-item">
+          <div class="cr-header"><div>🇨🇳 China</div><div><strong>56 aktiv + 24 im Bau</strong> ▲</div></div>
+          <div class="cr-bar-bg"><div class="cr-bar" style="width:60%;background:linear-gradient(90deg,#ef4444,#f97316)">Aggressivster Ausbau weltweit</div></div>
+        </div>
+        <div class="cr-item">
+          <div class="cr-header"><div>🇷🇺 Russland</div><div><strong>36</strong> + Export von AKWs</div></div>
+          <div class="cr-bar-bg"><div class="cr-bar" style="width:39%;background:linear-gradient(90deg,#a78bfa,#c4b5fd)">36 + baut für 10 Länder</div></div>
+        </div>
+        <div class="cr-item">
+          <div class="cr-header"><div>🇰🇷 Südkorea</div><div><strong>26</strong> · stark pro-nuklear</div></div>
+          <div class="cr-bar-bg"><div class="cr-bar" style="width:28%;background:linear-gradient(90deg,#38bdf8,#7dd3fc)">26 AKWs · exportiert Technologie</div></div>
+        </div>
+        <div class="cr-item">
+          <div class="cr-header"><div>🇩🇪 Deutschland</div><div><strong style="color:var(--red)">0</strong> · Atomausstieg 2023</div></div>
+          <div class="cr-bar-bg"><div class="cr-bar" style="width:3%;background:var(--red)">✗</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Reaktortypen -->
+  <div class="card">
+    <div class="card-title">Die neue Generation – Warum Kernenergie zurückkommt</div>
+    <div class="reactor-grid">
+      <div class="reactor-card">
+        <div class="reactor-icon">⚛️</div>
+        <div class="reactor-name">Klassischer Druckwasserreaktor (PWR)</div>
+        <div class="reactor-text">Standard seit 50 Jahren. 1.000–1.600 MW. Günstig im Betrieb, teuer im Bau. Frankreich hat 56 davon. Bewährt aber langsam zu bauen (10–15 Jahre).</div>
+        <span class="reactor-tag" style="background:rgba(56,189,248,0.15);color:var(--accent2)">440 weltweit aktiv</span>
+      </div>
+      <div class="reactor-card">
+        <div class="reactor-icon">🔬</div>
+        <div class="reactor-name">Small Modular Reactors (SMR)</div>
+        <div class="reactor-text">Revolutionär: 50–300 MW, in Fabrik vorgefertigt, schnell aufgebaut. NuScale (USA), Rolls-Royce (UK), China HTR-PM. Microsoft baut für KI-Strom. Könnte Atomkraft demokratisieren.</div>
+        <span class="reactor-tag" style="background:rgba(132,204,22,0.15);color:var(--accent)">🚀 Gamechanger ab 2030</span>
+      </div>
+      <div class="reactor-card">
+        <div class="reactor-icon">♻️</div>
+        <div class="reactor-name">Generation IV – Schnelle Brüter</div>
+        <div class="reactor-text">Verbrauchen hochradioaktiven Atommüll als Brennstoff! Können bestehenden Müll "verbrennen". Halbwertszeit sinkt von 10.000 auf 300 Jahre. China & Russland führend.</div>
+        <span class="reactor-tag" style="background:rgba(167,139,250,0.15);color:var(--purple)">Löst Abfall-Problem</span>
+      </div>
+      <div class="reactor-card">
+        <div class="reactor-icon">🧪</div>
+        <div class="reactor-name">Thorium-Reaktoren</div>
+        <div class="reactor-text">Thorium = 3× häufiger als Uran. Indien & China forschen intensiv. Kein Proliferationsrisiko (kein waffenfähiges Material). Noch nicht kommerziell – aber vielversprechend.</div>
+        <span class="reactor-tag" style="background:rgba(245,158,11,0.15);color:var(--amber)">Langfristige Option</span>
+      </div>
+      <div class="reactor-card">
+        <div class="reactor-icon">💡</div>
+        <div class="reactor-name">Fusion (ITER / Tokamak)</div>
+        <div class="reactor-text">Das "heilige Gral": Sonne auf Erden. ITER in Frankreich wird 2035 fertig. Tritium + Deuterium → Energie + Helium. Kein Atommüll, kein Meltdown-Risiko. Noch 20+ Jahre weg.</div>
+        <span class="reactor-tag" style="background:rgba(239,68,68,0.15);color:var(--red)">2040+ frühestens</span>
+      </div>
+      <div class="reactor-card">
+        <div class="reactor-icon">🤖</div>
+        <div class="reactor-name">KI + Kernkraft = Perfect Match</div>
+        <div class="reactor-text">KI-Rechenzentren brauchen 24/7 CO₂-freie Grundlast. Solar & Wind sind intermittierend. Kernkraft liefert konstant. Microsoft (Three Mile Island), Google, Amazon – alle kaufen Atomstrom.</div>
+        <span class="reactor-tag" style="background:rgba(132,204,22,0.15);color:var(--accent)">⚡ Neuer Mega-Treiber</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 4: Treiber -->
+  <div>
+    <div class="card-title" style="margin-bottom:16px">Die 4 Kräfte hinter der Nuklear-Renaissance</div>
+    <div class="row-4">
+      <div class="driver-card">
+        <div class="driver-icon">🌡️</div>
+        <div class="driver-title">Klimakrise als Katalysator</div>
+        <div class="driver-text">Kernkraft = 70g CO₂/kWh (inklusive Bau). Kohle = 800g. Gas = 400g. Solar = 50g. Als einzige stetige CO₂-arme Grundlast gewinnt Atom wieder Akzeptanz. IPCC: ohne Atom kein Netto-Null.</div>
+        <div class="driver-impact impact-bull">▲ Paradigmenwechsel</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">🏭</div>
+        <div class="driver-title">Angebots-Unterinvestition</div>
+        <div class="driver-text">9 Jahre Bärenmarkt (2011–20) haben Explorations- & Mineninvestitionen vernichtet. Neue Minen brauchen 10+ Jahre. Die Nachfrage steigt jetzt – das Angebot kann nicht folgen. Strukturelles Defizit ab 2025.</div>
+        <div class="driver-impact impact-high">⬆ Klassisches Commodity-Zyklus</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">⚡</div>
+        <div class="driver-title">KI & Datencenter Hunger</div>
+        <div class="driver-text">Ein ChatGPT-Gespräch verbraucht 10× mehr Strom als eine Google-Suche. Microsofts Datacenter-Boom = Atom-Boom. Amazon, Google schließen Long-Term Power Purchase Agreements mit AKWs.</div>
+        <div class="driver-impact impact-bull">▲ Neuer struktureller Treiber</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">🛡️</div>
+        <div class="driver-title">Geopolitik & Energiesicherheit</div>
+        <div class="driver-text">Russlands Gas-Erpressung machte Energieabhängigkeit zum Sicherheitsrisiko. Kernkraft = Brennstoff für 2–3 Jahre lagerbar. Geopolitisch viel stabiler als Gas-Pipelines. Europa rethinks Atom.</div>
+        <div class="driver-impact impact-high">⬆ Strategische Priorität</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 5: Charts -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Reaktoren im Bau nach Land (2024)</div>
+      <div class="chart-wrap-sm"><canvas id="buildChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Uran-Nachfrage Prognose vs. Primärproduktion (Mio. lbs)</div>
+      <div class="chart-wrap-sm"><canvas id="supplyChart"></canvas></div>
+      <div style="margin-top:10px;font-size:0.76rem;color:var(--subtle);line-height:1.5">
+        📊 <strong style="color:var(--text)">Die Lücke wächst:</strong> Weltnachfrage steigt durch neue Reaktoren. Primärproduktion aus Minen reicht nicht. Differenz wird durch Lagerabbau & Sekundärquellen gedeckt – das ist endlich.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Uran Dashboard · Daten: WNA, IAEA, UxC, Cameco, Kazatomprom, Sprott Asset Management · Stand Mai 2025 ·
+  Erstellt für <a href="https://joshua64267.github.io/portfolio">Joshua Müller Portfolio</a>
+</footer>
+
+<script>
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// ── PRICE CHART 2005–2025 ─────────────────────────────
+const priceLabels = ['2005','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022','2023','Jan 24','Mai 24','2025'];
+const spot  = [20, 48, 136, 63, 43, 43, 52, 42, 34, 28, 22, 18, 20, 24, 25, 30, 42, 52, 59, 106, 88, 84];
+const term  = [null,null,null,58, 52, 48, 63, 58, 50, 44, 36, 32, 31, 31, 32, 33, 37, 48, 58, 75, 78, 78];
+
+const ctx1 = document.getElementById('priceChart').getContext('2d');
+const grad = ctx1.createLinearGradient(0,0,0,280);
+grad.addColorStop(0,'rgba(132,204,22,0.3)');
+grad.addColorStop(1,'rgba(132,204,22,0.01)');
+
+new Chart(ctx1, {
+  type: 'line',
+  data: {
+    labels: priceLabels,
+    datasets: [
+      { label: 'Spotpreis $/lb', data: spot, borderColor: '#84cc16', backgroundColor: grad, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: '#84cc16', fill: true, tension: 0.3 },
+      { label: 'Langzeit-Vertrag', data: term, borderColor: '#38bdf8', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5,3], pointRadius: 0, tension: 0.3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1,
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y ?? 'n/a'}/lb` }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { maxTicksLimit: 12 } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => '$'+v } }
+    }
+  }
+});
+
+// ── BUILD CHART ───────────────────────────────────────
+new Chart(document.getElementById('buildChart'), {
+  type: 'bar',
+  data: {
+    labels: ['🇨🇳 China','🇮🇳 Indien','🇷🇺 Russland','🇰🇷 Südkorea','🇹🇷 Türkei','🇧🇬 Bulgarien','🇺🇸 USA','🇸🇰 Slowakei'],
+    datasets: [{
+      label: 'Reaktoren im Bau',
+      data: [24, 7, 4, 3, 4, 2, 2, 2],
+      backgroundColor: [
+        'rgba(239,68,68,0.8)', 'rgba(245,158,11,0.8)', 'rgba(167,139,250,0.8)',
+        'rgba(56,189,248,0.8)', 'rgba(132,204,22,0.8)', 'rgba(34,197,94,0.8)',
+        'rgba(59,130,246,0.8)', 'rgba(249,115,22,0.8)'
+      ],
+      borderRadius: 5
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1 }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' } }
+    }
+  }
+});
+
+// ── SUPPLY/DEMAND CHART ───────────────────────────────
+const sdLabels = ['2020','2021','2022','2023','2024e','2025e','2026e','2028e','2030e'];
+new Chart(document.getElementById('supplyChart'), {
+  type: 'line',
+  data: {
+    labels: sdLabels,
+    datasets: [
+      { label: 'Nachfrage (Mio lbs)', data: [162,163,168,172,180,190,198,218,240], borderColor: '#84cc16', backgroundColor: 'rgba(132,204,22,0.1)', borderWidth: 2.5, fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#84cc16' },
+      { label: 'Primärproduktion', data: [125,128,131,142,152,158,162,170,178], borderColor: '#38bdf8', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5,3], tension: 0.3, pointRadius: 3, pointBackgroundColor: '#38bdf8' }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#94a3b8', boxWidth: 12 } },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1, callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}M lbs` } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, min: 100, ticks: { callback: v => v+'M' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
