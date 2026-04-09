@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gold & Silber – Safe Haven & Industriemetall</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #080c14;
+      --card: #0f1520;
+      --card2: #131c2b;
+      --border: #1e2d42;
+      --gold: #f59e0b;
+      --silver: #94a3b8;
+      --accent2: #38bdf8;
+      --red: #ef4444;
+      --green: #22c55e;
+      --purple: #a78bfa;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --subtle: #94a3b8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    .ticker { background:#0a0f1a; border-bottom:1px solid var(--border); padding:8px 24px; display:flex; gap:28px; font-size:0.78rem; overflow-x:auto; }
+    .ticker-item { display:flex; gap:8px; align-items:center; white-space:nowrap; }
+    .ticker-item .label { color:var(--muted); }
+    .ticker-item .val { font-weight:600; }
+    .up { color:#22c55e; } .down { color:#ef4444; }
+
+    header { padding:28px 32px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; }
+    .header-left h1 { font-size:1.6rem; font-weight:700; letter-spacing:-0.5px; }
+    .header-left h1 .g { color:var(--gold); }
+    .header-left h1 .s { color:var(--silver); }
+    .header-left p { color:var(--muted); font-size:0.85rem; margin-top:4px; }
+    .header-right { display:flex; gap:12px; flex-wrap:wrap; }
+    .kpi { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 18px; text-align:center; min-width:120px; }
+    .kpi .kpi-label { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+    .kpi .kpi-val { font-size:1.4rem; font-weight:700; margin-top:2px; }
+    .kpi .kpi-sub { font-size:0.75rem; margin-top:2px; }
+
+    main { padding:24px 32px; display:grid; gap:24px; }
+    .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+    .row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; }
+    .row-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+    @media(max-width:1100px){ .row-2{grid-template-columns:1fr;} .row-3{grid-template-columns:1fr 1fr;} }
+    @media(max-width:700px){ .row-3,.row-4{grid-template-columns:1fr 1fr;} main{padding:16px;} }
+
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+    .card-title { font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+    .card-title::before { content:''; display:inline-block; width:3px; height:12px; background:var(--gold); border-radius:2px; }
+    .card-title.silver::before { background:var(--silver); }
+
+    .chart-wrap { position:relative; height:280px; }
+    .chart-wrap-sm { position:relative; height:210px; }
+
+    .events { display:flex; flex-direction:column; gap:10px; max-height:280px; overflow-y:auto; }
+    .event-item { display:flex; gap:12px; padding:10px 12px; background:var(--card2); border-radius:8px; border-left:3px solid var(--gold); align-items:flex-start; }
+    .event-item.neg  { border-left-color:var(--red); }
+    .event-item.pos  { border-left-color:var(--green); }
+    .event-item.warn { border-left-color:#f59e0b; }
+    .event-item.neu  { border-left-color:var(--accent2); }
+    .event-item.sil  { border-left-color:var(--silver); }
+    .event-date { font-size:0.72rem; color:var(--muted); white-space:nowrap; min-width:54px; margin-top:2px; }
+    .event-text { font-size:0.82rem; line-height:1.4; }
+    .event-text strong { color:var(--text); display:block; margin-bottom:2px; }
+    .event-text span { color:var(--subtle); }
+
+    .producer-list { display:flex; flex-direction:column; gap:12px; }
+    .producer-header { display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.83rem; }
+    .producer-header .country { display:flex; align-items:center; gap:6px; }
+    .producer-bar-bg { background:var(--card2); border-radius:4px; height:8px; overflow:hidden; }
+    .producer-bar { height:8px; border-radius:4px; }
+
+    /* USE CARDS */
+    .use-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+    @media(max-width:900px){ .use-grid{grid-template-columns:1fr 1fr;} }
+    .use-card { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:14px; }
+    .use-icon { font-size:1.8rem; margin-bottom:7px; }
+    .use-title { font-size:0.87rem; font-weight:600; margin-bottom:5px; }
+    .use-text { font-size:0.75rem; color:var(--subtle); line-height:1.5; }
+    .use-tag { display:inline-block; margin-top:7px; border-radius:4px; padding:2px 8px; font-size:0.7rem; font-weight:700; }
+
+    .driver-card { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:16px; }
+    .driver-icon { font-size:1.8rem; margin-bottom:8px; }
+    .driver-title { font-size:0.88rem; font-weight:600; margin-bottom:6px; }
+    .driver-text { font-size:0.78rem; color:var(--subtle); line-height:1.5; }
+    .driver-impact { margin-top:10px; font-size:0.72rem; padding:3px 8px; border-radius:4px; display:inline-block; font-weight:600; }
+    .impact-high { background:rgba(239,68,68,0.15); color:var(--red); }
+    .impact-med  { background:rgba(245,158,11,0.15); color:var(--gold); }
+    .impact-bull { background:rgba(34,197,94,0.15); color:var(--green); }
+    .impact-sil  { background:rgba(148,163,184,0.15); color:var(--silver); }
+
+    /* RATIO METER */
+    .ratio-meter { background:var(--card2); border-radius:10px; padding:16px; margin-top:12px; }
+    .ratio-val { font-size:2.4rem; font-weight:700; color:var(--gold); text-align:center; }
+    .ratio-label { text-align:center; font-size:0.75rem; color:var(--muted); margin-top:2px; }
+    .ratio-scale { margin-top:12px; position:relative; height:24px; background:linear-gradient(90deg,var(--green),var(--gold),var(--red)); border-radius:12px; }
+    .ratio-needle { position:absolute; top:-4px; width:4px; height:32px; background:white; border-radius:2px; transform:translateX(-50%); }
+    .ratio-labels { display:flex; justify-content:space-between; font-size:0.7rem; color:var(--muted); margin-top:4px; }
+
+    .legend { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:8px; }
+    .legend-item { display:flex; align-items:center; gap:5px; font-size:0.75rem; color:var(--subtle); }
+    .legend-dot { width:10px; height:10px; border-radius:50%; }
+
+    /* CENTRAL BANK TABLE */
+    .cb-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+    .cb-table th { color:var(--muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; padding:6px 10px; border-bottom:1px solid var(--border); text-align:left; }
+    .cb-table td { padding:8px 10px; border-bottom:1px solid rgba(30,45,66,0.5); }
+    .cb-table tr:last-child td { border-bottom:none; }
+    .cb-table .flag { font-size:1rem; }
+
+    ::-webkit-scrollbar { width:4px; height:4px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    footer { text-align:center; padding:24px; color:var(--muted); font-size:0.78rem; border-top:1px solid var(--border); }
+    footer a { color:var(--accent2); text-decoration:none; }
+  </style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-item"><span class="label">Gold (XAU)</span><span class="val" style="color:#f59e0b">$3.050/oz</span><span class="up">▲ +0.9%</span></div>
+  <div class="ticker-item"><span class="label">Silber (XAG)</span><span class="val" style="color:#94a3b8">$30.80/oz</span><span class="up">▲ +1.4%</span></div>
+  <div class="ticker-item"><span class="label">Gold/Silber Ratio</span><span class="val">99:1</span><span style="color:#64748b">━ historisch hoch</span></div>
+  <div class="ticker-item"><span class="label">GLD ETF (AuM)</span><span class="val">$58 Mrd</span><span class="up">▲ +2.1%</span></div>
+  <div class="ticker-item"><span class="label">COMEX Gold Open Int.</span><span class="val">548.000</span><span class="up">▲ Bullish</span></div>
+  <div class="ticker-item"><span class="label">Real-Zinsen USA</span><span class="val">1.8%</span><span class="down">▼ sinkt</span></div>
+  <div class="ticker-item"><span class="label">USD Index</span><span class="val">104.3</span><span class="down">▼ -0.3%</span></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <h1><span class="g">Gold</span> & <span class="s">Silber</span></h1>
+    <p>Safe Haven · Inflationsschutz · Zentralbank-Reserven · Silber als Industriemetall · Stand Mai 2025</p>
+  </div>
+  <div class="header-right">
+    <div class="kpi">
+      <div class="kpi-label">Gold Allzeithoch</div>
+      <div class="kpi-val" style="color:var(--gold)">$3.245</div>
+      <div class="kpi-sub up">▲ Apr 2025</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Gold YTD</div>
+      <div class="kpi-val" style="color:var(--green)">+25%</div>
+      <div class="kpi-sub up">▲ stärkster Start</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Silber aktuell</div>
+      <div class="kpi-val" style="color:var(--silver)">$30.80</div>
+      <div class="kpi-sub" style="color:var(--muted)">vs. ATH $50</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">ZB-Goldkäufe 2024</div>
+      <div class="kpi-val">1.045 t</div>
+      <div class="kpi-sub up">▲ 3. Jahr in Folge</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ROW 1: Preis + Events -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Gold & Silber Preisverlauf 2015–2025</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Gold ($/oz)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div> Silber ($/oz, ×50)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#38bdf8; opacity:0.5"></div> Real-Zins USA (inv.)</div>
+      </div>
+      <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Was hat die Preise bewegt?</div>
+      <div class="events">
+        <div class="event-item warn">
+          <div class="event-date">2018–19</div>
+          <div class="event-text"><strong>Fed-Zinspause beflügelt Gold</strong><span>Powell pausiert Zinserhöhungen. Reale Zinsen fallen. Gold steigt von $1.180 auf $1.550. Klassischer Mechanismus: niedrige Realzinsen = Gold-Bullenmarkt.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">Aug 2020</div>
+          <div class="event-text"><strong>COVID-ATH: Gold auf $2.075 – Silber +140%!</strong><span>Null-Zinsen, Gelddrucken, Unsicherheit. Gold auf Allzeithoch. Silber explodiert von $11 auf $29 – schneller als Gold. "Armes Manns Gold" holt auf.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">2021–22</div>
+          <div class="event-text"><strong>Fed dreht Zinsen hoch – Gold korrigiert</strong><span>Höhere Zinsen = höhere Opportunitätskosten für Gold (zahlt keine Zinsen). Gold fällt von $2.075 auf $1.620. Silber fällt mit. Real-Zins = wichtigster Gegner von Gold.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">Feb 2022</div>
+          <div class="event-text"><strong>Ukraine-Krieg: Sicherer Hafen gesucht</strong><span>Gold steigt auf $2.050. Aber: Russland-Sanktionen frieren russische Devisenreserven ein. Signal an Zentralbanken weltweit: Dollar-Reserven sind nicht sicher!</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">2022–24</div>
+          <div class="event-text"><strong>Zentralbanken kaufen Rekordmengen Gold</strong><span>China, Indien, Polen, Türkei, arabische Länder kaufen massiv Gold – weg vom Dollar. 2022: 1.082t. 2023: 1.037t. 2024: 1.045t. "De-Dollarisierung" in Gang.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">Mär 2024</div>
+          <div class="event-text"><strong>Gold bricht $2.000-Deckel – Allzeithochs im Wochentakt</strong><span>Trotz hoher Zinsen steigt Gold. Zentralbanken, asiatische Privatanleger, geopolitische Angst. Alte Korrelationen brechen. $2.100 → $2.400 → $2.790.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">2025</div>
+          <div class="event-text"><strong>Gold knackt $3.000 – dann $3.245 ATH</strong><span>US-Zölle, Rezessionsangst, Schulden-Sorgen. Gold als einzige Währung ohne Gegenparteirisiko. Zentralbanken kaufen weiter. ATH bei $3.245 im April 2025.</span></div>
+        </div>
+        <div class="event-item sil">
+          <div class="event-date">2024–25</div>
+          <div class="event-text"><strong>Silber: Solar-Boom treibt Industrie-Nachfrage</strong><span>Jedes Solarpanel braucht ~20g Silber. 2024: 600 GW neue Solarkapazität. Silber-Industrie-Nachfrage auf Rekordhoch. Aber: Investment-Nachfrage zögerlich → Silber "schläft" noch.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Gold/Silber Ratio + ZB Käufe -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Gold/Silber Ratio – Was sagt sie uns?</div>
+      <div class="chart-wrap-sm"><canvas id="ratioChart"></canvas></div>
+      <div class="ratio-meter">
+        <div class="ratio-val">99 : 1</div>
+        <div class="ratio-label">Aktuelle Ratio – historisch sehr hoch (Silber unterbewertet?)</div>
+        <div class="ratio-scale">
+          <div class="ratio-needle" style="left:82%"></div>
+        </div>
+        <div class="ratio-labels">
+          <span>30 (Silber teuer)</span>
+          <span>Ø 65 (normal)</span>
+          <span>125 (Silber billig)</span>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:0.76rem;color:var(--subtle);line-height:1.6">
+        💡 <strong style="color:var(--text)">Was bedeutet das?</strong> Für 1 oz Gold bekommst du gerade 99 oz Silber. Historisch normal = 65:1. In Krisen fiel die Ratio auf 30:1. Viele Analysten sehen Silber als stark unterbewertet gegenüber Gold.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Zentralbank-Goldkäufe – Die stille Revolution</div>
+      <div class="chart-wrap-sm"><canvas id="cbChart"></canvas></div>
+      <div style="margin-top:12px">
+        <table class="cb-table">
+          <tr><th>Land</th><th>Goldreserven</th><th>Käufe 2024</th><th>Trend</th></tr>
+          <tr><td><span class="flag">🇺🇸</span> USA</td><td>8.133 t</td><td>—</td><td style="color:var(--muted)">stabil</td></tr>
+          <tr><td><span class="flag">🇨🇳</span> China</td><td>2.264 t</td><td>+44 t</td><td class="up">▲▲ kauft</td></tr>
+          <tr><td><span class="flag">🇮🇳</span> Indien</td><td>853 t</td><td>+72 t</td><td class="up">▲▲ kauft</td></tr>
+          <tr><td><span class="flag">🇵🇱</span> Polen</td><td>392 t</td><td>+90 t</td><td class="up">▲▲▲ aggressiv</td></tr>
+          <tr><td><span class="flag">🇹🇷</span> Türkei</td><td>577 t</td><td>+75 t</td><td class="up">▲▲ kauft</td></tr>
+          <tr><td><span class="flag">🇩🇪</span> Deutschland</td><td>3.351 t</td><td>—</td><td style="color:var(--muted)">hält</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Produzenten -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Top Goldproduzenten 2024 (Tonnen/Jahr)</div>
+      <div class="producer-list">
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇨🇳</span> China</div>
+            <div><strong>375 t</strong><span style="color:var(--muted);font-size:0.75rem"> · Fast alles selbst verbraucht</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:100%;background:linear-gradient(90deg,#ef4444,#f97316)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇦🇺</span> Australien</div>
+            <div><strong>315 t</strong><span style="color:var(--green);font-size:0.75rem"> · Großer Exporteur</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:84%;background:linear-gradient(90deg,#f59e0b,#fcd34d)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇷🇺</span> Russland</div>
+            <div><strong>310 t</strong><span style="color:var(--red);font-size:0.75rem"> · Sanktioniert, verkauft an China/Indien</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:83%;background:linear-gradient(90deg,#a78bfa,#c4b5fd)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇨🇦</span> Kanada</div>
+            <div><strong>195 t</strong></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:52%;background:linear-gradient(90deg,#38bdf8,#7dd3fc)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇺🇸</span> USA (Nevada)</div>
+            <div><strong>170 t</strong></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:45%;background:linear-gradient(90deg,#3b82f6,#60a5fa)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇬🇭</span> Ghana</div>
+            <div><strong>130 t</strong><span style="color:var(--green);font-size:0.75rem"> · Afrikas #1</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:35%;background:linear-gradient(90deg,#22c55e,#86efac)"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title silver">Top Silberproduzenten 2024 (Tonnen/Jahr)</div>
+      <div class="producer-list">
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇲🇽</span> Mexiko</div>
+            <div><strong>6.400 t</strong><span style="color:var(--muted);font-size:0.75rem"> · #1 seit 10 Jahren</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:100%;background:linear-gradient(90deg,#94a3b8,#cbd5e1)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇨🇳</span> China</div>
+            <div><strong>3.600 t</strong></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:56%;background:linear-gradient(90deg,#64748b,#94a3b8)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇵🇪</span> Peru</div>
+            <div><strong>3.100 t</strong><span style="color:var(--red);font-size:0.75rem"> ▼ soziale Unruhen</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:48%;background:linear-gradient(90deg,#f59e0b,#fcd34d)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇨🇱</span> Chile</div>
+            <div><strong>1.400 t</strong><span style="color:var(--muted);font-size:0.75rem"> · Oft Nebenprodukt von Kupfer</span></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:22%;background:linear-gradient(90deg,#38bdf8,#7dd3fc)"></div></div>
+        </div>
+        <div class="producer-item">
+          <div class="producer-header">
+            <div class="country"><span>🇷🇺</span> Russland</div>
+            <div><strong>1.500 t</strong></div>
+          </div>
+          <div class="producer-bar-bg"><div class="producer-bar" style="width:23%;background:linear-gradient(90deg,#a78bfa,#c4b5fd)"></div></div>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:10px 12px;background:var(--card2);border-radius:8px;font-size:0.77rem;color:var(--subtle);line-height:1.6">
+        ⚗️ <strong style="color:var(--text)">Wichtig:</strong> ~75% des Silbers wird als <strong style="color:#94a3b8">Nebenprodukt</strong> aus Kupfer-, Blei- und Zinkminen gefördert. Das Angebot hängt also stark von der Kupfer-Produktion ab – nicht nur von der Silber-Nachfrage.
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 4: Silber Use Cases -->
+  <div class="card">
+    <div class="card-title silver">Silber – Mehr als nur "armes Manns Gold"</div>
+    <div class="use-grid">
+      <div class="use-card">
+        <div class="use-icon">☀️</div>
+        <div class="use-title">Solarenergie</div>
+        <div class="use-text">~20g Silber pro Solarpanel für elektrische Kontakte (Leitpaste). 2024: 600 GW neue Solarkapazität = ~200 Mio oz Silber verbraucht. Größter und wachsender Industriesektor.</div>
+        <span class="use-tag" style="background:rgba(245,158,11,0.15);color:#f59e0b">▲ Größter Treiber 2025+</span>
+      </div>
+      <div class="use-card">
+        <div class="use-icon">📱</div>
+        <div class="use-title">Elektronik & Chips</div>
+        <div class="use-text">Bestes elektrisches Leitmetall der Welt. Smartphones, Laptops, Autobatterien, Lötverbindungen. ~24% der Gesamtnachfrage. Sinkend durch Miniaturisierung – aber unverzichtbar.</div>
+        <span class="use-tag" style="background:rgba(56,189,248,0.15);color:#38bdf8">~24% der Nachfrage</span>
+      </div>
+      <div class="use-card">
+        <div class="use-icon">🏥</div>
+        <div class="use-title">Medizin & Hygiene</div>
+        <div class="use-text">Antibakteriell – Silber tötet Bakterien auf Wundoberflächen. Wundauflagen, Katheter, OP-Instrumente. COVID-Pandemie hat medizinische Nachfrage dauerhaft erhöht.</div>
+        <span class="use-tag" style="background:rgba(34,197,94,0.15);color:#22c55e">Wachsend</span>
+      </div>
+      <div class="use-card">
+        <div class="use-icon">🚗</div>
+        <div class="use-title">E-Mobilität & Sensoren</div>
+        <div class="use-text">E-Auto braucht ~2× mehr Silber als Verbrenner: Ladekabel-Kontakte, LIDAR-Sensoren, Batteriemanagement. Mit jedem E-Auto steigt die Silbernachfrage.</div>
+        <span class="use-tag" style="background:rgba(167,139,250,0.15);color:#a78bfa">▲ Wächst mit E-Boom</span>
+      </div>
+      <div class="use-card">
+        <div class="use-icon">💍</div>
+        <div class="use-title">Schmuck & Investment</div>
+        <div class="use-text">~20% Schmuck, ~20% Silberbarren & -münzen. Investment-Nachfrage schwankend. Wenn Gold sehr teuer wird, wechseln kleinere Anleger zu Silber als Alternative.</div>
+        <span class="use-tag" style="background:rgba(148,163,184,0.15);color:#94a3b8">~40% zusammen</span>
+      </div>
+      <div class="use-card">
+        <div class="use-icon">🪞</div>
+        <div class="use-title">Spiegel & Optik</div>
+        <div class="use-text">Silber reflektiert 95% des Lichts – bester Reflektor aller Metalle. Teleskop-Spiegel, Konzentrations-Solarkraftwerke (CSP), Hochleistungsoptik für Militär & Wissenschaft.</div>
+        <span class="use-tag" style="background:rgba(245,158,11,0.15);color:#f59e0b">Nische, aber kritisch</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 5: Treiber + Charts -->
+  <div>
+    <div class="card-title" style="margin-bottom:16px">Die 4 größten Kräfte für Gold & Silber</div>
+    <div class="row-4">
+      <div class="driver-card">
+        <div class="driver-icon">📉</div>
+        <div class="driver-title">Realzinsen – Goldener Kompass</div>
+        <div class="driver-text">Realzins = Nominalzins minus Inflation. Fallen Realzinsen → Gold steigt. Steigen sie → Gold fällt. Gold zahlt keine Zinsen – bei hohen Realzinsen ist Gold unattraktiv. Einfachste Formel im Goldmarkt.</div>
+        <div class="driver-impact impact-high">⬆ Wichtigster Einzelindikator</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">🏦</div>
+        <div class="driver-title">Zentralbank De-Dollarisierung</div>
+        <div class="driver-text">Seit 2022 kaufen ZBs Rekordmengen Gold – weg vom US-Dollar. Russlands eingefrorene Reserven waren ein Schock. "Gold kann nicht eingefroren werden." Strukturelle Nachfrage komplett verändert.</div>
+        <div class="driver-impact impact-bull">▲ Neues strukturelles Fundament</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">😨</div>
+        <div class="driver-title">Geopolitik & Rezessionsangst</div>
+        <div class="driver-text">Kriege, Krisen, Schulden. In jeder Unsicherheit flieht Kapital in Gold. 2025: US-Zölle, Handelskonflikt → Gold +25% YTD. Gold ist die einzige Währung ohne Gegenparteirisiko.</div>
+        <div class="driver-impact impact-high">⬆ Klassischer Safe Haven</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">☀️</div>
+        <div class="driver-title">Silber: Solar-Revolution</div>
+        <div class="driver-text">Silber-Industrie-Nachfrage wächst jedes Jahr durch Solar. Während Investment-Nachfrage schwankt, ist Solar-Nachfrage strukturell. Silber-Defizit seit 3 Jahren. Lager schrumpfen. Kursfrage: wann?</div>
+        <div class="driver-impact impact-sil">⬆ Strukturelles Defizit</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Silber Nachfragestruktur 2024 (Mio. oz)</div>
+      <div class="chart-wrap-sm"><canvas id="silverUseChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Gold vs. Inflation vs. S&P500 (Index 2015=100)</div>
+      <div class="chart-wrap-sm"><canvas id="perfChart"></canvas></div>
+      <div style="margin-top:10px;font-size:0.76rem;color:var(--subtle);line-height:1.5">
+        📊 <strong style="color:var(--text)">Langfristiger Inflationsschutz:</strong> Gold hat über 10 Jahre besser als die Inflation performt – aber schlechter als Aktien. Es ist kein Wachstumsinvestment, sondern Vermögenssicherung & Krisenversicherung.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Gold & Silber Dashboard · Daten: WGC, Silver Institute, LBMA, COMEX, Federal Reserve · Stand Mai 2025 ·
+  Erstellt für <a href="https://joshua64267.github.io/portfolio">Joshua Müller Portfolio</a>
+</footer>
+
+<script>
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// ── PRICE CHART ───────────────────────────────────────
+const labels = ['2015','2016','2017','2018','2019','2020','Aug 20','2021','2022','Jan 23','Jan 24','Apr 24','Jan 25','Apr 25'];
+const gold   = [1060, 1145, 1295, 1280, 1520, 1770, 2075, 1830, 1950, 1920, 2040, 2330, 2680, 3245];
+const silv50 = [730,  850,  850,  780,  875, 1050, 1450,  1250, 1175, 1175, 1150, 1300, 1550, 1540]; // ×50
+
+const ctx1 = document.getElementById('priceChart').getContext('2d');
+const gradG = ctx1.createLinearGradient(0,0,0,280);
+gradG.addColorStop(0,'rgba(245,158,11,0.3)');
+gradG.addColorStop(1,'rgba(245,158,11,0.01)');
+
+new Chart(ctx1, {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      { label: 'Gold ($/oz)', data: gold,    borderColor: '#f59e0b', backgroundColor: gradG, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: '#f59e0b', fill: true, tension: 0.3, yAxisID: 'y' },
+      { label: 'Silber ×50',  data: silv50,  borderColor: '#94a3b8', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, borderDash: [3,2], tension: 0.3, yAxisID: 'y' }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1,
+        callbacks: { label: ctx => ctx.datasetIndex === 0 ? ` Gold: $${ctx.parsed.y}/oz` : ` Silber: $${(ctx.parsed.y/50).toFixed(2)}/oz` }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => '$'+v.toLocaleString() }, min: 600 }
+    }
+  }
+});
+
+// ── RATIO CHART ───────────────────────────────────────
+new Chart(document.getElementById('ratioChart'), {
+  type: 'line',
+  data: {
+    labels: ['2010','2012','2014','2016','2018','2020','2021','2022','2023','2024','2025'],
+    datasets: [{
+      label: 'Gold/Silber Ratio',
+      data: [62, 52, 65, 72, 82, 114, 68, 83, 80, 88, 99],
+      borderColor: '#f59e0b',
+      backgroundColor: 'rgba(245,158,11,0.1)',
+      borderWidth: 2.5, fill: true, tension: 0.3,
+      pointRadius: 4, pointBackgroundColor: '#f59e0b'
+    }, {
+      label: 'Historischer Durchschnitt (65)',
+      data: Array(11).fill(65),
+      borderColor: 'rgba(148,163,184,0.4)',
+      backgroundColor: 'transparent',
+      borderWidth: 1, borderDash: [4,4], pointRadius: 0
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1, callbacks: { label: ctx => ` Ratio: ${ctx.parsed.y}:1` } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, min: 40, ticks: { callback: v => v+':1' } }
+    }
+  }
+});
+
+// ── CENTRAL BANK CHART ────────────────────────────────
+new Chart(document.getElementById('cbChart'), {
+  type: 'bar',
+  data: {
+    labels: ['2010','2012','2014','2016','2018','2019','2020','2021','2022','2023','2024'],
+    datasets: [{
+      label: 'ZB-Goldkäufe (Tonnen netto)',
+      data: [77, 532, 466, 395, 541, 668, 255, 450, 1082, 1037, 1045],
+      backgroundColor: (ctx) => ctx.parsed.y > 0 ? 'rgba(245,158,11,0.75)' : 'rgba(239,68,68,0.75)',
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1, callbacks: { label: ctx => ` ${ctx.parsed.y}t` } } },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => v+'t' } }
+    }
+  }
+});
+
+// ── SILVER USE ────────────────────────────────────────
+new Chart(document.getElementById('silverUseChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['☀️ Solar', '📱 Elektronik', '💍 Schmuck', '🔩 Industrie', '🏦 Investment', '🏥 Medizin'],
+    datasets: [{
+      data: [200, 248, 186, 175, 204, 65],
+      backgroundColor: ['rgba(245,158,11,0.85)','rgba(56,189,248,0.85)','rgba(148,163,184,0.85)','rgba(167,139,250,0.85)','rgba(34,197,94,0.85)','rgba(239,68,68,0.85)'],
+      borderColor: '#080c14', borderWidth: 3
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'right', labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1, callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} Mio oz` } }
+    }
+  }
+});
+
+// ── PERFORMANCE CHART ─────────────────────────────────
+new Chart(document.getElementById('perfChart'), {
+  type: 'line',
+  data: {
+    labels: ['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'],
+    datasets: [
+      { label: '🟡 Gold', data: [100,108,122,120,143,167,173,183,192,219,290], borderColor: '#f59e0b', backgroundColor:'transparent', borderWidth:2.5, pointRadius:2, tension:0.3 },
+      { label: '📈 S&P 500', data: [100,112,136,129,169,199,256,206,260,325,300], borderColor: '#22c55e', backgroundColor:'transparent', borderWidth:2, borderDash:[4,3], pointRadius:2, tension:0.3 },
+      { label: '🔵 Inflation (CPI)', data: [100,102,104,106,108,110,117,126,131,135,138], borderColor: '#38bdf8', backgroundColor:'transparent', borderWidth:1.5, borderDash:[2,4], pointRadius:0, tension:0.3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#94a3b8', boxWidth: 12, font:{size:10} } },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1 }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => v } }
+    }
+  }
+});
+</script>
+</body>
+</html>
