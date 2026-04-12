@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Argentinien — Milei & Strukturelle Krisen</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:      #0f1117;
+    --surface: #1a1d27;
+    --border:  #2a2d3a;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --accent:  #60a5fa;
+    --accent2: #3b82f6;
+    --red:     #ef4444;
+    --green:   #22c55e;
+    --yellow:  #f59e0b;
+    --blue:    #60a5fa;
+    --purple:  #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; }
+
+  .ticker-wrap { background: #0a0c12; border-bottom: 1px solid var(--border); overflow: hidden; height: 32px; display: flex; align-items: center; }
+  .ticker-track { display: flex; animation: ticker 75s linear infinite; white-space: nowrap; }
+  .ticker-item { padding: 0 26px; font-size: 11.5px; font-weight: 600; }
+  .ticker-item span { color: var(--muted); margin-right: 5px; }
+  .up { color: var(--green); } .dn { color: var(--red); } .neu { color: var(--accent); }
+  @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+  .header { padding: 22px 28px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px; }
+  .header-left h1 { font-size: 22px; font-weight: 700; }
+  .header-left h1 span { color: var(--accent); }
+  .header-left p { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+  .kpi-row { display: flex; gap: 22px; flex-wrap: wrap; }
+  .kpi { text-align: right; }
+  .kpi-val { font-size: 20px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .kpi-lbl { font-size: 10.5px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: .4px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px 28px; max-width: 1400px; margin: 0 auto; }
+  .col-span-2 { grid-column: span 2; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--accent); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .card-title::before { content:''; display:block; width:3px; height:12px; background:var(--accent); border-radius:2px; }
+  .chart-wrap { position: relative; height: 210px; }
+  .chart-wrap-sm { position: relative; height: 175px; }
+  .chart-wrap-lg { position: relative; height: 250px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+  .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: center; }
+  .stat-val { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .4px; }
+
+  .sector-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .sector-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .sc-icon { font-size: 20px; margin-bottom: 5px; }
+  .sc-title { font-size: 11px; font-weight: 700; color: var(--text); }
+  .sc-badge { display:inline-block; margin-top:5px; font-size:9.5px; font-weight:700; padding:2px 8px; border-radius:4px; }
+  .sc-text { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .badge-green { background:rgba(34,197,94,.15); color:var(--green); }
+  .badge-yellow { background:rgba(245,158,11,.15); color:var(--yellow); }
+  .badge-red { background:rgba(239,68,68,.15); color:var(--red); }
+  .badge-blue { background:rgba(96,165,250,.15); color:var(--blue); }
+  .badge-accent { background:rgba(96,165,250,.15); color:var(--accent); }
+  .badge-purple { background:rgba(167,139,250,.15); color:var(--purple); }
+
+  .geo-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .geo-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .geo-icon { font-size:20px; margin-bottom:6px; }
+  .geo-title { font-size:11px; font-weight:700; color:var(--text); margin-bottom:4px; }
+  .geo-text { font-size:10.5px; color:var(--muted); line-height:1.4; }
+  .geo-badge { margin-top:8px; font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px; display:inline-block; }
+
+  .timeline { list-style:none; position:relative; padding-left:20px; }
+  .timeline::before { content:''; position:absolute; left:6px; top:0; bottom:0; width:2px; background:var(--border); border-radius:2px; }
+  .timeline li { position:relative; margin-bottom:13px; }
+  .timeline li::before { content:''; position:absolute; left:-17px; top:4px; width:8px; height:8px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
+  .tl-date { font-size:10px; color:var(--accent); font-weight:700; }
+  .tl-text { font-size:11.5px; color:var(--muted); margin-top:1px; line-height:1.4; }
+  .tl-text strong { color:var(--text); }
+
+  .bar-list { display:flex; flex-direction:column; gap:9px; }
+  .bar-row { display:flex; align-items:center; gap:10px; }
+  .bar-label { width:120px; font-size:11px; color:var(--muted); flex-shrink:0; }
+  .bar-track { flex:1; background:var(--bg); border-radius:4px; height:13px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:4px; }
+  .bar-val { width:55px; font-size:11px; font-weight:700; text-align:right; flex-shrink:0; }
+
+  .thesis-box { background:var(--bg); border:1px solid rgba(96,165,250,.2); border-radius:8px; padding:12px; margin-top:12px; }
+  .thesis-label { font-size:10px; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+  .thesis-text { font-size:11px; color:var(--muted); line-height:1.6; }
+
+  .footer { border-top:1px solid var(--border); padding:14px 28px; display:flex; justify-content:space-between; color:var(--muted); font-size:10.5px; margin-top:10px; }
+  .back-link { color:var(--accent); text-decoration:none; font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-track">
+    <div class="ticker-item neu"><span>Merval (Buenos Aires)</span>2.180.000 Punkte <span class="up">▲+1.2%</span></div>
+    <div class="ticker-item neu"><span>USD/ARS (offiziell)</span>1.050 <span class="dn">▼ Peso kollabiert</span></div>
+    <div class="ticker-item neu"><span>USD/ARS (Blue Dollar)</span>1.090 <span class="dn">▼ Parallelmarkt</span></div>
+    <div class="ticker-item neu"><span>Country Risk</span>780 Bp <span class="dn">▼−15 Bp</span></div>
+    <div class="ticker-item neu"><span>YPF (Öl)</span>$13.40 <span class="up">▲+2.1%</span></div>
+    <div class="ticker-item neu"><span>MercadoLibre (MELI)</span>$2.180 <span class="up">▲+0.8%</span></div>
+    <div class="ticker-item neu"><span>Arg. 10J Bond</span>14.2% yield <span class="dn">▼−0.3%</span></div>
+    <div class="ticker-item neu"><span>Inflation YoY</span>289% <span class="dn">▼ fallend</span></div>
+    <!-- repeat -->
+    <div class="ticker-item neu"><span>Merval (Buenos Aires)</span>2.180.000 Punkte <span class="up">▲+1.2%</span></div>
+    <div class="ticker-item neu"><span>USD/ARS (offiziell)</span>1.050 <span class="dn">▼ Peso kollabiert</span></div>
+    <div class="ticker-item neu"><span>USD/ARS (Blue Dollar)</span>1.090 <span class="dn">▼ Parallelmarkt</span></div>
+    <div class="ticker-item neu"><span>Country Risk</span>780 Bp <span class="dn">▼−15 Bp</span></div>
+    <div class="ticker-item neu"><span>YPF (Öl)</span>$13.40 <span class="up">▲+2.1%</span></div>
+    <div class="ticker-item neu"><span>MercadoLibre (MELI)</span>$2.180 <span class="up">▲+0.8%</span></div>
+    <div class="ticker-item neu"><span>Arg. 10J Bond</span>14.2% yield <span class="dn">▼−0.3%</span></div>
+    <div class="ticker-item neu"><span>Inflation YoY</span>289% <span class="dn">▼ fallend</span></div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>🇦🇷 <span>Argentinien</span> — Milei & Strukturelle Krisen</h1>
+    <p>Neoliberales Experiment · 9× Staatspleite · Peso-Verfall · Hoffnung auf Energieexporte</p>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val">211% YoY</div><div class="kpi-lbl">Inflation 2023</div></div>
+    <div class="kpi"><div class="kpi-val">9×</div><div class="kpi-lbl">Staatspleiten (Rekord)</div></div>
+    <div class="kpi"><div class="kpi-val">−2,8%</div><div class="kpi-lbl">BIP 2024 (Milei-Schock)</div></div>
+    <div class="kpi"><div class="kpi-val">$44 Mrd.</div><div class="kpi-lbl">IMF-Schulden</div></div>
+  </div>
+</div>
+
+<!-- ROW 1: Inflation + BIP -->
+<div class="grid" style="padding-bottom:0;">
+  <div class="card">
+    <div class="card-title">🔥 Inflation 1980–2025 (YoY %)</div>
+    <div class="chart-wrap-lg">
+      <canvas id="inflationChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 BIP pro Kopf USD 2000–2025</div>
+    <div class="chart-wrap-lg">
+      <canvas id="gdpChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 2: Debt + Exchange -->
+<div class="grid" style="padding-top:8px;padding-bottom:0;">
+  <div class="card">
+    <div class="card-title">💰 Staatsschulden % BIP & Default-Phasen</div>
+    <div class="chart-wrap-sm">
+      <canvas id="debtChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💹 Peso-Verfall 2015–2025 (ARS/1 USD)</div>
+    <div class="chart-wrap-sm">
+      <canvas id="exchangeChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 3: Milei Reform + Theme Cards -->
+<div class="grid" style="padding-top:8px;padding-bottom:0;">
+  <div class="card">
+    <div class="card-title">⚡ Milei-Schock: Fiskalüberschuss 2019–2025</div>
+    <div class="chart-wrap-sm">
+      <canvas id="mileiChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🎯 Themen-Karten Argentinien</div>
+    <div class="sector-cards">
+      <div class="sector-card">
+        <div class="sc-icon">🔥</div>
+        <div class="sc-title">Milei-Revolution</div>
+        <span class="sc-badge badge-accent">LIBERTÄRER SCHOCK</span>
+        <div class="sc-text">Kettensäge-Symbol. −30% Staatsausgaben in Monaten. 70k Beamte entlassen. 8 statt 18 Ministerien. Peso-Abwertung −54% Tag 1.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">💵</div>
+        <div class="sc-title">Dollarisierung</div>
+        <span class="sc-badge badge-yellow">IN DISKUSSION</span>
+        <div class="sc-text">Milei wollte offizielle Dollarisierung. Keine Dollar-Reserven. Compromise: Wechselkurs-Flexibilität. Kapitalkontrollen gelockert.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">🌾</div>
+        <div class="sc-title">Pampa-Agrar</div>
+        <span class="sc-badge badge-green">WELTKLASSE</span>
+        <div class="sc-text">3. größter Soja-Exporteur. Rindfleisch Qualität #1. Wein Mendoza. Vaca Muerta Shale (2. weltweit nach USA).</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">⚡</div>
+        <div class="sc-title">Vaca Muerta</div>
+        <span class="sc-badge badge-blue">GAMECHANGER</span>
+        <div class="sc-text">16 Mrd. Barrel Öl-Äquivalent. YPF + TotalEnergies + Shell + ExxonMobil. LNG-Terminal 2027 geplant. Energieexporteur-Status möglich.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">🔋</div>
+        <div class="sc-title">Lithium</div>
+        <span class="sc-badge badge-purple">STILLER GIGANT</span>
+        <div class="sc-text">Lithium-Dreieck (Arg, Chile, Bolivien). 2. größte Reserven weltweit (17%). Puna-Salzseen. Livent, Allkem, POSCO investieren.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">🏦</div>
+        <div class="sc-title">Chronische Instabilität</div>
+        <span class="sc-badge badge-red">STRUKTURPROBLEM</span>
+        <div class="sc-text">9 Staatspleiten (Weltrekord). Kapitalflucht chronisch. $200+ Mrd. Auslands-Bestände. Blaue Dollar seit Jahrzehnten.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 4: Geopolitik -->
+<div class="grid" style="padding-top:8px;padding-bottom:0;">
+  <div class="card col-span-2">
+    <div class="card-title">🌏 Geopolitische Positionierung & Risiken</div>
+    <div class="geo-cards">
+      <div class="geo-card">
+        <div class="geo-icon">🇺🇸</div>
+        <div class="geo-title">IMF & USA-Beziehung</div>
+        <div class="geo-text">$44 Mrd. Schulden beim IWF (größter Schuldner). Milei pro-USA, pro-Israel. Gaza-Krieg Unterstützung. Gute Trump-Beziehung.</div>
+        <div class="geo-badge badge-accent">STRATEGISCHE NEUAUSRICHTUNG</div>
+      </div>
+      <div class="geo-card">
+        <div class="geo-icon">🇧🇷</div>
+        <div class="geo-title">Mercosur & Lula-Konflikt</div>
+        <div class="geo-text">Milei nannte Lula "korrupt" — diplomatischer Eklat. Mercosur-EU-Deal. Milei lehnt Mercosur-Sozialismus ab, bleibt Mitglied.</div>
+        <div class="geo-badge badge-red">SPANNUNGSFELD</div>
+      </div>
+      <div class="geo-card">
+        <div class="geo-icon">🇨🇳</div>
+        <div class="geo-title">China-Swap-Linie</div>
+        <div class="geo-text">China hält $18 Mrd. Swap-Linie (Yuan-Reserve). Milei will nicht China-abhängig, aber braucht Liquidität. Pragmatische Balance.</div>
+        <div class="geo-badge badge-yellow">NOTWENDIGES ÜBEL</div>
+      </div>
+      <div class="geo-card">
+        <div class="geo-icon">🌊</div>
+        <div class="geo-title">Falkland-Frage</div>
+        <div class="geo-text">Malvinas/Falklands emotional geladen. UK-Argentinier-Spannungen latent. Öl-Exploration. Diplomatisch irrelevant, innenpolitisch Dauerthema.</div>
+        <div class="geo-badge badge-red">HISTORISCHE WUNDE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 5: Timeline + Thesis -->
+<div class="grid" style="padding-top:8px;padding-bottom:10px;">
+  <div class="card">
+    <div class="card-title">📅 Krise & Reformen 1989–2025</div>
+    <ul class="timeline">
+      <li><div class="tl-date">1989</div><div class="tl-text"><strong>Hyperinflation 3.079%</strong> — Alfonsín tritt vorzeitig ab. Menem übernimmt. Peso-Verfall. Unruhen.</div></li>
+      <li><div class="tl-date">1991</div><div class="tl-text"><strong>Convertibility Plan</strong> — Peso 1:1 Dollar-Bindung. Stabilisierung aber strukturell falsch.</div></li>
+      <li><div class="tl-date">2001–2002</div><div class="tl-text"><strong>Größter Default der Geschichte</strong> — $100 Mrd., Corralito, 5 Präsidenten in 2 Wochen, Peso −70%.</div></li>
+      <li><div class="tl-date">2003–2011</div><div class="tl-text"><strong>Kirchner-Boom</strong> — Schuldenschnitt, Rohstoff-Superzyklus, Wachstum, aber Übergriffe.</div></li>
+      <li><div class="tl-date">2014</div><div class="tl-text"><strong>Default #2</strong> — "Holdout"-Gläubiger vor US-Gericht. NML vs. Argentinien.</div></li>
+      <li><div class="tl-date">2018–2019</div><div class="tl-text"><strong>Macri-Krise</strong> — Peso-Kollaps, IWF-Kredit $57 Mrd. (größter in IWF-Geschichte). Inflation 54%.</div></li>
+      <li><div class="tl-date">2020</div><div class="tl-text"><strong>Default #3</strong> — $65 Mrd. Umschuldung unter Fernández.</div></li>
+      <li><div class="tl-date">Dez. 2023</div><div class="tl-text"><strong>Milei-Wahl</strong> — "Anarcho-Kapitalist" gewinnt. Kettensäge-Symbol. Peso −54% am ersten Tag.</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💡 Investment-Thesen</div>
+    <div class="thesis-box">
+      <div class="thesis-label" style="color:var(--green);">BULL</div>
+      <div class="thesis-text">
+        Vaca Muerta = Energiewende (LNG 2027), Lithium-Dreieck für EV-Boom, Milei-Reformen zeigen Erfolg, Peso-Stabilisierung möglich, günstigste Agrarland weltweit.
+      </div>
+    </div>
+    <div class="thesis-box">
+      <div class="thesis-label" style="color:var(--red);">BEAR</div>
+      <div class="thesis-text">
+        9 Defaults = kein Vertrauen, Peso-Verfall strukturell, soziale Unruhen durch Sparmaßnahmen, Kapitalflucht, IWF-Abhängigkeit, Dollarisierung gescheitert.
+      </div>
+    </div>
+    <div class="thesis-box">
+      <div class="thesis-label" style="color:var(--yellow);">WILDCARD</div>
+      <div class="thesis-text">
+        Vaca Muerta LNG-Terminal 2027 → Argentinien wird Energie-Exporteur. Trump-Milei-Freundschaft → US-Kapital und politische Unterstützung.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <a href="../index.html" class="back-link">← Portfolio</a>
+  <span>Quellen: INDEC, Banco Central de la República Argentina, BCRA, IMF, World Bank — Illustrativ Q2 2025</span>
+  <span>Argentinien Dashboard v1.0</span>
+</div>
+
+<script>
+const accent = '#60a5fa', red = '#ef4444', green = '#22c55e', yellow = '#f59e0b', blue = '#60a5fa', purple = '#a78bfa', muted = '#64748b';
+Chart.defaults.color = muted;
+Chart.defaults.borderColor = '#2a2d3a';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// Inflation Chart (dramatic spikes)
+new Chart(document.getElementById('inflationChart'), {
+  type: 'line',
+  data: {
+    labels: ['1985','1989','1990','2002','2010','2015','2018','2019','2020','2021','2022','2023','2024','2025e'],
+    datasets: [{
+      label: 'Inflation YoY (%)',
+      data: [385, 3079, 2314, 41, 10.9, 26.9, 34.3, 53.8, 36.1, 50.9, 94.8, 211.4, 117.8, 55],
+      borderColor: red, backgroundColor: 'rgba(239,68,68,.15)', borderWidth: 2.5, pointRadius: 3, fill: true, tension: 0.4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1e2130' } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => v+'%' }, type: 'logarithmic' }
+    }
+  }
+});
+
+// BIP pro Kopf
+new Chart(document.getElementById('gdpChart'), {
+  type: 'line',
+  data: {
+    labels: ['2000','2001','2002','2003','2004','2006','2008','2010','2012','2014','2016','2018','2019','2020','2021','2022','2023','2024'],
+    datasets: [{
+      label: 'BIP pro Kopf (USD)',
+      data: [7700,7200,2700,3400,4000,5200,8200,10000,13000,12600,12700,11600,9900,8400,10700,13600,13800,11000],
+      borderColor: blue, backgroundColor: 'rgba(96,165,250,.1)', borderWidth: 2.5, pointRadius: 2.5, fill: true, tension: 0.35
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1e2130' } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => '$'+v/1000+'k' } }
+    }
+  }
+});
+
+// Debt Chart
+new Chart(document.getElementById('debtChart'), {
+  type: 'bar',
+  data: {
+    labels: ['2004','2006','2008','2010','2012','2014','2016','2018','2019','2020','2021','2022','2023','2024'],
+    datasets: [{
+      label: 'Staatsschulden (% BIP)',
+      data: [113,67,55,45,40,43,53,86,90,103,83,80,89,91],
+      backgroundColor: function(ctx) {
+        const defaults = [red, '#16a34a', '#16a34a', '#16a34a', '#16a34a', red, '#16a34a', '#16a34a', '#16a34a', red, '#16a34a', '#16a34a', '#16a34a', '#f59e0b'];
+        return defaults[ctx.dataIndex];
+      },
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1e2130' } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => v+'%' } }
+    }
+  }
+});
+
+// Exchange Rate (Peso Verfall)
+new Chart(document.getElementById('exchangeChart'), {
+  type: 'line',
+  data: {
+    labels: ['Jan15','Jan16','Jan17','Jan18','Jan19','Jan20','Jan21','Jan22','Jan23','Jun23','Jan24','Jun24','Jan25','Apr25'],
+    datasets: [{
+      label: 'ARS per 1 USD',
+      data: [8.5, 13.0, 15.8, 19.0, 37.0, 60.0, 84.0, 104.0, 187.0, 270.0, 800.0, 915.0, 1010.0, 1050.0],
+      borderColor: red, backgroundColor: 'rgba(239,68,68,.1)', borderWidth: 2.5, pointRadius: 3, fill: true, tension: 0.35
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1e2130' } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => v }, type: 'logarithmic' }
+    }
+  }
+});
+
+// Milei Fiscal
+new Chart(document.getElementById('mileiChart'), {
+  type: 'bar',
+  data: {
+    labels: ['2019','2020','2021','2022','2023','2024','2025e'],
+    datasets: [{
+      label: 'Fiskalüberschuss/Defizit (% BIP)',
+      data: [-3.8, -8.5, -3.0, -2.4, -2.9, 0.3, 1.2],
+      backgroundColor: function(ctx) {
+        return ctx.parsed.y >= 0 ? green : red;
+      },
+      borderRadius: 5
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => v+'%' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
