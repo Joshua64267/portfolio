@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuba — Embargo & Krise Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0f1117;
+            --bg-surface: #1a1d27;
+            --border-color: #2a2d3a;
+            --text-primary: #e6e6e6;
+            --text-secondary: #a0a0a0;
+            --accent: #ef4444;
+            --accent-rgb: 239, 68, 68;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --blue: #3b82f6;
+            --purple: #a855f7;
+            --grid-dark: #1e2130;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+        }
+
+        /* Ticker Bar */
+        .ticker-container {
+            background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.1), rgba(var(--accent-rgb), 0.05));
+            border-bottom: 1px solid var(--border-color);
+            overflow: hidden;
+            padding: 12px 0;
+            position: relative;
+        }
+
+        .ticker-wrapper {
+            display: flex;
+            animation: scroll-left 60s linear infinite;
+            gap: 40px;
+        }
+
+        .ticker-item {
+            white-space: nowrap;
+            padding: 0 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .ticker-item strong {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Header */
+        .header {
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border-color);
+            padding: 40px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header-title {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header-flag {
+            font-size: 40px;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .kpi-card {
+            background-color: rgba(var(--accent-rgb), 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px;
+        }
+
+        .kpi-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--accent);
+            display: inline-block;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            padding-left: 12px;
+            position: relative;
+        }
+
+        .card-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: var(--accent);
+        }
+
+        .card-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 3px;
+            margin-left: 8px;
+            margin-bottom: 12px;
+        }
+
+        .badge-accent {
+            background-color: rgba(var(--accent-rgb), 0.15);
+            color: var(--accent);
+        }
+
+        .badge-yellow {
+            background-color: rgba(234, 179, 8, 0.15);
+            color: #fef08a;
+        }
+
+        .badge-blue {
+            background-color: rgba(59, 130, 246, 0.15);
+            color: #93c5fd;
+        }
+
+        .badge-purple {
+            background-color: rgba(168, 85, 247, 0.15);
+            color: #d8b4fe;
+        }
+
+        .badge-green {
+            background-color: rgba(34, 197, 94, 0.15);
+            color: #bbf7d0;
+        }
+
+        .card-content {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Chart Container */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            position: relative;
+            min-height: 350px;
+        }
+
+        .chart-card canvas {
+            max-height: 300px;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 16px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: var(--accent);
+        }
+
+        .timeline-item {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            padding-left: 50px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 28px;
+            width: 16px;
+            height: 16px;
+            background-color: var(--accent);
+            border: 3px solid var(--bg-dark);
+            border-radius: 50%;
+        }
+
+        .timeline-year {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .timeline-text {
+            color: var(--text-secondary);
+        }
+
+        /* Thesis Box */
+        .thesis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .thesis-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .thesis-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .thesis-bull {
+            border-left: 3px solid var(--green);
+        }
+
+        .thesis-bear {
+            border-left: 3px solid var(--accent);
+        }
+
+        .thesis-wildcard {
+            border-left: 3px solid var(--yellow);
+        }
+
+        .thesis-content {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Grid Layouts */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: var(--bg-surface);
+            border-top: 1px solid var(--border-color);
+            padding: 24px 40px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        .footer a:hover {
+            opacity: 0.7;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                padding: 20px;
+            }
+
+            .header-title {
+                font-size: 24px;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Ticker -->
+    <div class="ticker-container">
+        <div class="ticker-wrapper">
+            <!-- First set -->
+            <div class="ticker-item"><strong>Tourismus-Ankünfte 2024:</strong> 2,1 Mio. ▼−40% vs. 2019</div>
+            <div class="ticker-item"><strong>USD/CUP (offiziell):</strong> 24 CUP ▲ künstlich</div>
+            <div class="ticker-item"><strong>USD/CUP (Schwarzmarkt):</strong> 250+ ▼ Peso kollabiert</div>
+            <div class="ticker-item"><strong>Zucker-Produktion:</strong> 350k t ▼ historisches Tief</div>
+            <div class="ticker-item"><strong>Nickel-Export:</strong> $400 Mio./Jahr ▲ stabil</div>
+            <div class="ticker-item"><strong>Remittances:</strong> $2 Mrd./Jahr ▲ Lebensader</div>
+            <div class="ticker-item"><strong>BTC-Legalisierung 2021:</strong> aktiv ▲</div>
+            <div class="ticker-item"><strong>US-Embargo seit:</strong> 1962 ▼ 63 Jahre</div>
+            <!-- Second set (seamless loop) -->
+            <div class="ticker-item"><strong>Tourismus-Ankünfte 2024:</strong> 2,1 Mio. ▼−40% vs. 2019</div>
+            <div class="ticker-item"><strong>USD/CUP (offiziell):</strong> 24 CUP ▲ künstlich</div>
+            <div class="ticker-item"><strong>USD/CUP (Schwarzmarkt):</strong> 250+ ▼ Peso kollabiert</div>
+            <div class="ticker-item"><strong>Zucker-Produktion:</strong> 350k t ▼ historisches Tief</div>
+            <div class="ticker-item"><strong>Nickel-Export:</strong> $400 Mio./Jahr ▲ stabil</div>
+            <div class="ticker-item"><strong>Remittances:</strong> $2 Mrd./Jahr ▲ Lebensader</div>
+            <div class="ticker-item"><strong>BTC-Legalisierung 2021:</strong> aktiv ▲</div>
+            <div class="ticker-item"><strong>US-Embargo seit:</strong> 1962 ▼ 63 Jahre</div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-top">
+            <div class="header-title">Kuba — Embargo & Krise</div>
+            <div class="header-flag">🇨🇺</div>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">US-Embargo seit</div>
+                <div class="kpi-value">1962 (63 Jahre)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">BIP-Einbruch 2020</div>
+                <div class="kpi-value">−11%</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Emigranten seit 2021</div>
+                <div class="kpi-value">1,5 Mio.</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Stromausfälle täglich</div>
+                <div class="kpi-value">12–20 Stunden</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Charts Section -->
+        <div class="section">
+            <div class="section-title">Wirtschaftliche Verläufe</div>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">BIP-Wachstum 2000–2025</h3>
+                    <canvas id="gdpChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">Tourismus-Ankünfte 2010–2025</h3>
+                    <canvas id="tourismChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">Zuckerproduktion (historisch)</h3>
+                    <canvas id="sugarChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">Devisenquellen 2024 (Mrd USD)</h3>
+                    <canvas id="remitChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-grid">
+                <div class="chart-card" style="grid-column: 1 / -1;">
+                    <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">Energiekrise: Kapazität vs. Bedarf</h3>
+                    <canvas id="energyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sectors Section -->
+        <div class="section">
+            <div class="section-title">Schlüsselsektoren & Themen</div>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-title">
+                        🏥 Medizin-Export — DEVISENQUELLE #1
+                        <span class="card-badge badge-accent">Medizin</span>
+                    </div>
+                    <div class="card-content">
+                        Kubas Ärzte als Exportgut. 30.000+ kubanische Ärzte in Venezuela, Angola, Brasilien. 2023: ~$6 Mrd. Einnahmen (offiziell). Kritik: Zwangsarbeit-ähnliche Bedingungen. Weltklasse-Medizinstudium dennoch real.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🍬 Zucker — ERINNERUNG AN GLANZZEITEN
+                        <span class="card-badge badge-yellow">Sektor</span>
+                    </div>
+                    <div class="card-content">
+                        Einst Weltmarktführer: 8,5 Mio. t (1970). Heute: 350k t — historisches Tief. Fabrik-Kollaps, Ersatzteilmangel, Treibstoff fehlt. Zucker-Sektor praktisch tot. Einst 80% der Exporteinnahmen.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🌐 Internet-Öffnung & Protest
+                        <span class="card-badge badge-blue">Technologie</span>
+                    </div>
+                    <div class="card-content">
+                        2019: Mobilinternet eingeführt (als letztes Land Lateinamerikas fast). Juli 2021: "Patria y Vida" Proteste via Social Media organisiert — größte Demos seit 1959. Staat blockiert Internet. 2021–2024: Emigrations-Boom.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🔋 Bitcoin-Legalisierung
+                        <span class="card-badge badge-purple">Krypto</span>
+                    </div>
+                    <div class="card-content">
+                        2021: Kuba legalisiert Kryptowährungen (als Weg um US-Sanktionen zu umgehen). Remittances in BTC/USDT. Dezentralisierte Transfers umgehen Bankblockaden. Pragmatischer Schritt in einer sozialistischen Wirtschaft.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🚗 Oldtimer-Wirtschaft
+                        <span class="card-badge badge-green">Kultur</span>
+                    </div>
+                    <div class="card-content">
+                        Importverbot für Autos seit 1959. Ergebnis: 60.000 amerikanische Autos aus den 1950ern noch in Betrieb ("Yank Tanks"). 2011 Freigabe privaten Autohandels. Mechaniker-Genialität legendär. Symbol für Kreativität unter Mangelbedingungen.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        ⚡ Energiekrise 2022–2024
+                        <span class="card-badge badge-accent">Krise</span>
+                    </div>
+                    <div class="card-content">
+                        Thermoalkraftwerke aus den 1970ern brechen zusammen. Stromausfälle 12–20 Stunden täglich. Venezuela liefert kaum noch Öl. Solarenergie notfallmäßig ausgebaut. Winter 2023/24: Totale Stromabschaltungen in ganzen Provinzen.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Geopolitical Section -->
+        <div class="section">
+            <div class="section-title">Geopolitische Dimensionen</div>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-title">
+                        🇺🇸 US-Embargo (seit 1962)
+                        <span class="card-badge badge-accent">63 JAHRE ISOLATION</span>
+                    </div>
+                    <div class="card-content">
+                        Über 900 Mrd. USD Schaden laut Kuba (strittig). Helms-Burton Act. Obama-Auftauen 2015–2016: Botschaften geöffnet, Kreuzfahrer kamen. Trump: Wieder verschärft. Biden: Kaum Lockerung. Kuba auf "State Sponsor of Terror"-Liste.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🇷🇺 Russland — Nostalgie-Partner
+                        <span class="card-badge badge-accent">HISTORISCHE BINDUNG</span>
+                    </div>
+                    <div class="card-content">
+                        UdSSR-Zusammenbruch 1991 = "Spezialperiode" in Kuba (extreme Armut). Heute: Russland schickt wieder Weizen, Öl. Militärische Zusammenarbeit. Russische Signalstation in Lourdes reaktiviert (Gerüchte).
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🇻🇪 Venezuela-Abhängigkeit
+                        <span class="card-badge badge-accent">SCHICKSALSGEMEINSCHAFT</span>
+                    </div>
+                    <div class="card-content">
+                        Chávez-Kuba: 100.000 bbl/d Öl gegen Ärzte. 2014–2019: Venezuela-Krise → Kuba-Krise. Heute 30k bbl/d. Jede weitere Venezuela-Destabilisierung trifft Kuba direkt.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🇨🇳 China — stiller Gläubiger
+                        <span class="card-badge badge-accent">STILLE UNTERSTÜTZUNG</span>
+                    </div>
+                    <div class="card-content">
+                        China hat Kubas Schulden mehrfach umgeschuldet. Elektronik-Importe, Telekommunikation (Huawei). Kein großes Investment — China sieht wenig Rendite. Ideologischer Schulterschluss ohne echte Wirtschaftsdynamik.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline Section -->
+        <div class="section">
+            <div class="section-title">Zeitstrahl der Revolution & Isolation</div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-year">1959</div>
+                    <div class="timeline-text">Kubanische Revolution — Castro übernimmt. Enteignungen, US-Beziehungsabbruch, Sowjet-Anlehnung</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">1962</div>
+                    <div class="timeline-text">US-Handelsembargo + Kubakrise — 13 Tage Welt am Rand des Atomkriegs. Embargo dauert bis heute</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">1991</div>
+                    <div class="timeline-text">Sowjetunion kollabiert — "Período especial": Hunger, Stromausfälle, BIP −35% in 3 Jahren</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2000</div>
+                    <div class="timeline-text">Venezuela-Pakt — Chávez liefert Öl, Kuba liefert Ärzte. Wirtschaftliche Lebensader</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2008</div>
+                    <div class="timeline-text">Raúl Castro übernimmt — Moderate Liberalisierungen: Handys, kleine Privatunternehmen</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2015</div>
+                    <div class="timeline-text">Obama-Auftauen — Diplomatische Beziehungen normalisiert. Kurze Hoffnungsphase</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">Jul. 2021</div>
+                    <div class="timeline-text">"Patria y Vida" Proteste — Größte Demos seit 1959. Staat schlägt nieder. Emigrationswelle folgt</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2022–2024</div>
+                    <div class="timeline-text">Energiekrise-Eskalation — Stromausfälle bis 20h/Tag. 1,5 Mio. Emigranten seit 2021. System am Limit.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Investment Thesis Section -->
+        <div class="section">
+            <div class="section-title">Investment Thesis</div>
+            <div class="thesis-grid">
+                <div class="thesis-card thesis-bull">
+                    <div class="thesis-label">🚀 Bull Case</div>
+                    <div class="thesis-content">
+                        Embargo-Ende = sofortiger Tourismus-Boom (Kuba wäre Karibik #1). Hochgebildete Bevölkerung (99% Alphabetisierung), Medizinsektor-Kompetenz. Unberührte Natur, Infrastruktur-Investitionsbedarf riesig.
+                    </div>
+                </div>
+                <div class="thesis-card thesis-bear">
+                    <div class="thesis-label">⚠️ Bear Case</div>
+                    <div class="thesis-content">
+                        Politisches System verhindert echte Reform. Eigentumsrechte inexistent. US-Embargo in absehbarer Zeit nicht aufgehoben. Gehirn-Abwanderung massiv. Energiesystem am Zusammenbruch.
+                    </div>
+                </div>
+                <div class="thesis-card thesis-wildcard">
+                    <div class="thesis-label">🎰 Wildcard</div>
+                    <div class="thesis-content">
+                        Tod Kubas letzter historischer Revolutionsführer → Generationenwechsel in Führung → echte Reform möglich? Florida-Exil-Gemeinschaft (800k Kubaner) wartet auf Rückkehr.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <a href="../index.html">← Back to Portfolio</a>
+    </div>
+
+    <script>
+        // Chart.js default options
+        Chart.defaults.color = '#a0a0a0';
+        Chart.defaults.borderColor = '#2a2d3a';
+
+        // 1. GDP Chart
+        const gdpCtx = document.getElementById('gdpChart').getContext('2d');
+        new Chart(gdpCtx, {
+            type: 'bar',
+            data: {
+                labels: ['2000', '2002', '2004', '2006', '2008', '2010', '2012', '2014', '2016', '2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+                datasets: [{
+                    label: 'BIP-Wachstum (%)',
+                    data: [6.0, 1.4, 5.4, 12.1, 4.1, 2.4, 3.0, 1.0, 0.5, 2.2, 0.5, -10.9, 1.3, 1.8, 0.5, -1.5],
+                    backgroundColor: function(context) {
+                        return context.parsed.y >= 0 ? '#22c55e' : '#ef4444';
+                    },
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#1e2130' }
+                    },
+                    x: {
+                        grid: { color: '#1e2130' }
+                    }
+                }
+            }
+        });
+
+        // 2. Tourism Chart
+        const tourismCtx = document.getElementById('tourismChart').getContext('2d');
+        new Chart(tourismCtx, {
+            type: 'bar',
+            data: {
+                labels: ['2010', '2012', '2014', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+                datasets: [{
+                    label: 'Ankünfte (Mio.)',
+                    data: [2.5, 2.8, 3.0, 4.0, 4.7, 4.7, 4.3, 1.1, 0.6, 1.9, 2.4, 2.1],
+                    backgroundColor: '#ef4444',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#1e2130' },
+                        beginAtZero: true,
+                        max: 5
+                    },
+                    x: {
+                        grid: { color: '#1e2130' }
+                    }
+                }
+            }
+        });
+
+        // 3. Sugar Production Chart
+        const sugarCtx = document.getElementById('sugarChart').getContext('2d');
+        new Chart(sugarCtx, {
+            type: 'line',
+            data: {
+                labels: ['1970', '1980', '1985', '1990', '1995', '2000', '2005', '2010', '2015', '2019', '2021', '2023', '2025e'],
+                datasets: [{
+                    label: 'Zuckerproduktion (Mio. t)',
+                    data: [8.5, 6.8, 8.2, 8.4, 3.3, 4.1, 1.3, 1.1, 1.8, 1.3, 0.8, 0.4, 0.35],
+                    borderColor: '#eab308',
+                    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#eab308',
+                    pointBorderColor: '#0f1117',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#1e2130' },
+                        beginAtZero: true,
+                        max: 9
+                    },
+                    x: {
+                        grid: { color: '#1e2130' }
+                    }
+                }
+            }
+        });
+
+        // 4. Remittances & Currency Sources (Horizontal Bar)
+        const remitCtx = document.getElementById('remitChart').getContext('2d');
+        new Chart(remitCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Tourismus', 'Remittances', 'Nickel-Export', 'Ärzte-Export', 'Zucker', 'Tabak/Zigarren'],
+                datasets: [{
+                    label: 'Mrd USD',
+                    data: [1.8, 2.0, 0.4, 0.8, 0.15, 0.25],
+                    backgroundColor: ['#ef4444', '#22c55e', '#3b82f6', '#a855f7', '#eab308', '#f59e0b'],
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#1e2130' },
+                        beginAtZero: true
+                    },
+                    y: {
+                        grid: { color: '#1e2130' }
+                    }
+                }
+            }
+        });
+
+        // 5. Energy Crisis Chart
+        const energyCtx = document.getElementById('energyChart').getContext('2d');
+        new Chart(energyCtx, {
+            type: 'bar',
+            data: {
+                labels: ['2015', '2017', '2019', '2021', '2022', '2023', '2024'],
+                datasets: [
+                    {
+                        label: 'Kapazität (MW)',
+                        data: [6200, 5800, 5500, 4800, 4200, 3500, 3200],
+                        backgroundColor: '#22c55e',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Bedarf (MW)',
+                        data: [5000, 5100, 5200, 4900, 5000, 5100, 5000],
+                        backgroundColor: '#ef4444',
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: true, position: 'top' }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#1e2130' },
+                        beginAtZero: true
+                    },
+                    x: {
+                        grid: { color: '#1e2130' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
