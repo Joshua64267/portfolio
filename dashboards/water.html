@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wasser – Der unterschätzte Rohstoff</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #080c14;
+      --card: #0f1520;
+      --card2: #131c2b;
+      --border: #1e2d42;
+      --accent: #38bdf8;
+      --accent2: #0ea5e9;
+      --teal: #14b8a6;
+      --red: #ef4444;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --purple: #a78bfa;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --subtle: #94a3b8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    .ticker { background:#0a0f1a; border-bottom:1px solid var(--border); padding:8px 24px; display:flex; gap:28px; font-size:0.78rem; overflow-x:auto; }
+    .ticker-item { display:flex; gap:8px; align-items:center; white-space:nowrap; }
+    .ticker-item .label { color:var(--muted); }
+    .ticker-item .val { font-weight:600; }
+    .up { color:#22c55e; } .down { color:#ef4444; }
+
+    header { padding:28px 32px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; }
+    .header-left h1 { font-size:1.6rem; font-weight:700; letter-spacing:-0.5px; }
+    .header-left h1 span { color:var(--accent); }
+    .header-left p { color:var(--muted); font-size:0.85rem; margin-top:4px; }
+    .header-right { display:flex; gap:12px; flex-wrap:wrap; }
+    .kpi { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 18px; text-align:center; min-width:120px; }
+    .kpi .kpi-label { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+    .kpi .kpi-val { font-size:1.4rem; font-weight:700; margin-top:2px; }
+    .kpi .kpi-sub { font-size:0.75rem; margin-top:2px; }
+
+    main { padding:24px 32px; display:grid; gap:24px; }
+    .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+    .row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; }
+    .row-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+    @media(max-width:1100px){ .row-2{grid-template-columns:1fr;} .row-3{grid-template-columns:1fr 1fr;} }
+    @media(max-width:700px){ .row-3,.row-4{grid-template-columns:1fr 1fr;} main{padding:16px;} }
+
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+    .card-title { font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+    .card-title::before { content:''; display:inline-block; width:3px; height:12px; background:var(--accent); border-radius:2px; }
+
+    .chart-wrap { position:relative; height:280px; }
+    .chart-wrap-sm { position:relative; height:210px; }
+
+    .events { display:flex; flex-direction:column; gap:10px; max-height:280px; overflow-y:auto; }
+    .event-item { display:flex; gap:12px; padding:10px 12px; background:var(--card2); border-radius:8px; border-left:3px solid var(--accent); align-items:flex-start; }
+    .event-item.neg  { border-left-color:var(--red); }
+    .event-item.pos  { border-left-color:var(--green); }
+    .event-item.warn { border-left-color:var(--amber); }
+    .event-item.neu  { border-left-color:var(--teal); }
+    .event-date { font-size:0.72rem; color:var(--muted); white-space:nowrap; min-width:58px; margin-top:2px; }
+    .event-text { font-size:0.82rem; line-height:1.4; }
+    .event-text strong { color:var(--text); display:block; margin-bottom:2px; }
+    .event-text span { color:var(--subtle); }
+
+    /* STRESS BARS */
+    .stress-list { display:flex; flex-direction:column; gap:11px; }
+    .stress-item { }
+    .stress-header { display:flex; justify-content:space-between; margin-bottom:4px; font-size:0.82rem; }
+    .stress-bar-bg { background:var(--card2); border-radius:4px; height:10px; overflow:hidden; }
+    .stress-bar { height:10px; border-radius:4px; }
+
+    /* VIRTUAL WATER CARDS */
+    .vw-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    @media(max-width:900px){ .vw-grid{grid-template-columns:repeat(2,1fr);} }
+    .vw-card { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:14px; text-align:center; }
+    .vw-icon { font-size:2rem; margin-bottom:6px; }
+    .vw-product { font-size:0.82rem; font-weight:600; margin-bottom:4px; }
+    .vw-liters { font-size:1.4rem; font-weight:700; color:var(--accent); }
+    .vw-unit { font-size:0.68rem; color:var(--muted); margin-top:2px; }
+    .vw-note { font-size:0.7rem; color:var(--subtle); margin-top:5px; line-height:1.4; }
+
+    /* CONFLICT TABLE */
+    .conflict-list { display:flex; flex-direction:column; gap:10px; }
+    .conflict-item { background:var(--card2); border-radius:8px; padding:12px 14px; border-left:3px solid var(--red); }
+    .conflict-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px; }
+    .conflict-name { font-size:0.85rem; font-weight:600; }
+    .conflict-tag { font-size:0.68rem; padding:2px 7px; border-radius:4px; font-weight:700; }
+    .conflict-text { font-size:0.76rem; color:var(--subtle); line-height:1.4; }
+
+    .driver-card { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:16px; }
+    .driver-icon { font-size:1.8rem; margin-bottom:8px; }
+    .driver-title { font-size:0.88rem; font-weight:600; margin-bottom:6px; }
+    .driver-text { font-size:0.78rem; color:var(--subtle); line-height:1.5; }
+    .driver-impact { margin-top:10px; font-size:0.72rem; padding:3px 8px; border-radius:4px; display:inline-block; font-weight:600; }
+    .impact-high { background:rgba(239,68,68,0.15); color:var(--red); }
+    .impact-med  { background:rgba(245,158,11,0.15); color:var(--amber); }
+    .impact-bull { background:rgba(56,189,248,0.15); color:var(--accent); }
+
+    .legend { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:8px; }
+    .legend-item { display:flex; align-items:center; gap:5px; font-size:0.75rem; color:var(--subtle); }
+    .legend-dot { width:10px; height:10px; border-radius:50%; }
+
+    /* WATER GLOBE VISUAL */
+    .water-split { display:flex; gap:12px; margin-top:12px; }
+    .water-box { flex:1; background:var(--card2); border-radius:8px; padding:12px; text-align:center; }
+    .water-box .pct { font-size:2rem; font-weight:700; }
+    .water-box .label { font-size:0.72rem; color:var(--muted); margin-top:3px; }
+    .water-box .sub { font-size:0.68rem; color:var(--subtle); margin-top:3px; line-height:1.4; }
+
+    ::-webkit-scrollbar { width:4px; height:4px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    footer { text-align:center; padding:24px; color:var(--muted); font-size:0.78rem; border-top:1px solid var(--border); }
+    footer a { color:var(--accent2); text-decoration:none; }
+  </style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-item"><span class="label">NQH2O (Kalifornien)</span><span class="val" style="color:#38bdf8">$1.382/Acre-Foot</span><span class="down">▼ -4.2%</span></div>
+  <div class="ticker-item"><span class="label">PHO ETF (Wasserindex)</span><span class="val">$58.40</span><span class="up">▲ +0.8%</span></div>
+  <div class="ticker-item"><span class="label">Veolia (VIE)</span><span class="val">€27.80</span><span class="up">▲ +0.4%</span></div>
+  <div class="ticker-item"><span class="label">Xylem (XYL)</span><span class="val">$128.50</span><span class="up">▲ +1.1%</span></div>
+  <div class="ticker-item"><span class="label">Bottled Water Markt</span><span class="val">$300 Mrd</span><span class="up">▲ +6%/Jahr</span></div>
+  <div class="ticker-item"><span class="label">Wasserknapp 2025</span><span class="val">2 Mrd Menschen</span><span class="down">▼ wächst</span></div>
+  <div class="ticker-item"><span class="label">Globaler Verbrauch</span><span class="val">4.600 km³/Jahr</span><span class="up">▲ +1%/Jahr</span></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <h1>Wasser – <span>Der unterschätzte Rohstoff</span></h1>
+    <p>Knappheit · Virtuelles Wasser · Geopolitische Konflikte · Investmentmarkt · Stand Mai 2025</p>
+  </div>
+  <div class="header-right">
+    <div class="kpi">
+      <div class="kpi-label">Süßwasser der Erde</div>
+      <div class="kpi-val" style="color:var(--accent)">2,5%</div>
+      <div class="kpi-sub" style="color:var(--muted)">des Gesamtwassers</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Davon zugänglich</div>
+      <div class="kpi-val" style="color:var(--amber)">0,3%</div>
+      <div class="kpi-sub down">▼ schwindend</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Ohne Sauberwasser</div>
+      <div class="kpi-val" style="color:var(--red)">2 Mrd</div>
+      <div class="kpi-sub down">▼ Menschen</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Prognose 2050</div>
+      <div class="kpi-val" style="color:var(--red)">5 Mrd</div>
+      <div class="kpi-sub down">▼ Wasserknappheit</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ROW 1: Wasserverteilung + Events -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Globale Wassernutzung & Knappheits-Index 2025</div>
+
+      <!-- Wasser-Split Visual -->
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Wo geht das Wasser hin?</div>
+      <div class="water-split" style="margin-top:0">
+        <div class="water-box">
+          <div class="pct" style="color:var(--green)">70%</div>
+          <div class="label">🌾 Landwirtschaft</div>
+          <div class="sub">Bewässerung, Viehzucht. Ineffizienz: 40% verdunstet ungenutzt</div>
+        </div>
+        <div class="water-box">
+          <div class="pct" style="color:var(--accent2)">20%</div>
+          <div class="label">🏭 Industrie</div>
+          <div class="sub">Kühlung, Produktion, Bergbau. China & USA größte Verbraucher</div>
+        </div>
+        <div class="water-box">
+          <div class="pct" style="color:var(--accent)">10%</div>
+          <div class="label">🏠 Haushalte</div>
+          <div class="sub">Trinken, Kochen, Hygiene. Reiche Länder verbrauchen 10× mehr</div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px">
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">Wasserknappheits-Index nach Region</div>
+        <div class="chart-wrap-sm"><canvas id="scarcityChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Krisen, Konflikte & Wendepunkte</div>
+      <div class="events">
+        <div class="event-item neg">
+          <div class="event-date">2011–12</div>
+          <div class="event-text"><strong>Syrienkrieg – Dürre als Auslöser</strong><span>4 Jahre Dürre vernichten syrische Landwirtschaft. 1,5 Mio Bauern ziehen in Städte. Sozialer Druck explodiert → Bürgerkrieg. Klimaforscher: Erste "Wasserkrieg"-Warnung wird real.</span></div>
+        </div>
+        <div class="event-item warn">
+          <div class="event-date">2018</div>
+          <div class="event-text"><strong>Kapstadt: "Day Zero" – Fast keine Tropfen mehr</strong><span>Südafrikas zweitgrößte Stadt fast ohne Wasser. Rationierung: 50L/Person/Tag (normal: 200L). Abgewendet durch Notmaßnahmen – aber weltweites Warnsignal.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">2020</div>
+          <div class="event-text"><strong>Nasdaq startet Wasserpreisfutures (NQH2O)</strong><span>Zum ersten Mal wird Wasser an der Börse gehandelt – Kalifornische Wasserrechte. Goldman Sachs: "Wasser wird das Öl des 21. Jahrhunderts." Umstrittene Finanzialisierung.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">2021</div>
+          <div class="event-text"><strong>US-Westen: Colorado River auf historischem Tiefstand</strong><span>Lake Mead (Las Vegas, Phoenix, LA) auf 30% Füllstand – niedrigstem seit Bau 1930s. 7 US-Bundesstaaten müssen Wasserrechte neu verhandeln. 40 Mio Menschen betroffen.</span></div>
+        </div>
+        <div class="event-item neg">
+          <div class="event-date">2023</div>
+          <div class="event-text"><strong>Äthiopiens GERD-Staudamm füllt sich – Ägypten tobt</strong><span>Äthiopien füllt den weltgrößten Staudamm am Blauen Nil. Ägypten: "Existenzbedrohung" – 95% des Wassers kommen vom Nil. Kriegsdrohungen. UN-Krisenmodus.</span></div>
+        </div>
+        <div class="event-item warn">
+          <div class="event-date">2024</div>
+          <div class="event-text"><strong>Nordindien: Grundwasserspiegel sinkt um 1m/Jahr</strong><span>Ogallala-Aquifer (USA) und Nordindien-Aquifer leerpumpen sich unwiederbringlich. Bewässerungslandwirtschaft auf Pump. In 30-50 Jahren Kollaps ganzer Anbauregionen möglich.</span></div>
+        </div>
+        <div class="event-item neu">
+          <div class="event-date">2025</div>
+          <div class="event-text"><strong>EU "Water Resilience Strategy" verabschiedet</strong><span>Europa investiert €250 Mrd in Wasserinfrastruktur bis 2030. Kreislaufwirtschaft, Wiederverwendung, smarte Netze. Wassersektor wird zum Infrastruktur-Investment der Dekade.</span></div>
+        </div>
+        <div class="event-item pos">
+          <div class="event-date">2025</div>
+          <div class="event-text"><strong>Saudi-Arabien & UAE: Desalination 2.0</strong><span>Neue Solarenergie-betriebene Meerwasserentsalzung sinkt auf $0.30/m³ – Rekordgünstig. Israel recycelt 90% des Abwassers. Technologie wird globaler Export-Schlager.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Virtuelles Wasser -->
+  <div class="card">
+    <div class="card-title">💧 Virtuelles Wasser – Wieviel Wasser steckt in deinem Essen?</div>
+    <div style="font-size:0.78rem;color:var(--subtle);margin-bottom:14px;line-height:1.5">
+      <strong style="color:var(--text)">"Virtuelles Wasser"</strong> ist das Wasser, das für Produktion, Verarbeitung & Transport eines Produkts verbraucht wird. Länder "exportieren" Wasser unsichtbar durch Lebensmittelexporte – ein riesiger, unsichtbarer globaler Fluss.
+    </div>
+    <div class="vw-grid">
+      <div class="vw-card">
+        <div class="vw-icon">🥩</div>
+        <div class="vw-product">Rindfleisch</div>
+        <div class="vw-liters">15.400</div>
+        <div class="vw-unit">Liter pro kg</div>
+        <div class="vw-note">Gras, Getreide, Tränken – über 3 Jahre aufgesummert. Ein Burger = ~2.400L</div>
+      </div>
+      <div class="vw-card">
+        <div class="vw-icon">🍫</div>
+        <div class="vw-product">Schokolade</div>
+        <div class="vw-liters">17.196</div>
+        <div class="vw-unit">Liter pro kg</div>
+        <div class="vw-note">Kakaopflanze braucht enorm viel Wasser. Westafrika unter Wassersstress.</div>
+      </div>
+      <div class="vw-card">
+        <div class="vw-icon">☕</div>
+        <div class="vw-product">Kaffee</div>
+        <div class="vw-liters">140</div>
+        <div class="vw-unit">Liter pro Tasse</div>
+        <div class="vw-note">Eine einzige Tasse Kaffee = 140L Wasser für Anbau, Verarbeitung, Transport.</div>
+      </div>
+      <div class="vw-card">
+        <div class="vw-icon">🌾</div>
+        <div class="vw-product">Weizen</div>
+        <div class="vw-liters">1.300</div>
+        <div class="vw-unit">Liter pro kg</div>
+        <div class="vw-note">1 Brot = ~40L. Russland & USA "exportieren" Milliarden Liter via Weizenexporte.</div>
+      </div>
+      <div class="vw-card">
+        <div class="vw-icon">🌰</div>
+        <div class="vw-product">Mandeln</div>
+        <div class="vw-liters">12.000</div>
+        <div class="vw-unit">Liter pro kg</div>
+        <div class="vw-note">Kalifornien produziert 80% der Welt-Mandeln – im dürregeplagten Central Valley!</div>
+      </div>
+      <div class="vw-card">
+        <div class="vw-icon">🐔</div>
+        <div class="vw-product">Hühnerfleisch</div>
+        <div class="vw-liters">4.300</div>
+        <div class="vw-unit">Liter pro kg</div>
+        <div class="vw-note">5× effizienter als Rind. Bewusste Fleischauswahl = direkter Wassereinfluss.</div>
+      </div>
+      <div class="vw-card">
+        <div class="vw-icon">🫘</div>
+        <div class="vw-product">Sojabohnen</div>
+        <div class="vw-liters">2.145</div>
+        <div class="vw-unit">Liter pro kg</div>
+        <div class="vw-note">Brasilien "exportiert" via Soja massiv Wasserressourcen aus dem Amazonasgebiet.</div>
+      </div>
+      <div class="vw-card">
+        <div class="vw-icon">🍅</div>
+        <div class="vw-product">Tomaten</div>
+        <div class="vw-liters">180</div>
+        <div class="vw-unit">Liter pro kg</div>
+        <div class="vw-note">Vergleichsweise wassereffizient. Pflanzliche Ernährung = dramatisch weniger Wasserverbrauch.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Wasserknappheit + Konflikte -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Länder unter extremem Wasserstress 2025</div>
+      <div class="stress-list">
+        <div class="stress-item">
+          <div class="stress-header"><div>🇸🇦 Saudi-Arabien</div><div style="color:var(--red)"><strong>Extrem · 100%</strong> Wasserentnahme</div></div>
+          <div class="stress-bar-bg"><div class="stress-bar" style="width:100%;background:linear-gradient(90deg,#ef4444,#f97316)"></div></div>
+        </div>
+        <div class="stress-item">
+          <div class="stress-header"><div>🇮🇱 Israel / 🇯🇴 Jordanien</div><div style="color:var(--red)"><strong>Extrem · 97%</strong></div></div>
+          <div class="stress-bar-bg"><div class="stress-bar" style="width:97%;background:linear-gradient(90deg,#ef4444,#f97316)"></div></div>
+        </div>
+        <div class="stress-item">
+          <div class="stress-header"><div>🇮🇳 Indien (Nordwesten)</div><div style="color:var(--red)"><strong>Hoch · 85%</strong></div></div>
+          <div class="stress-bar-bg"><div class="stress-bar" style="width:85%;background:linear-gradient(90deg,#f59e0b,#ef4444)"></div></div>
+        </div>
+        <div class="stress-item">
+          <div class="stress-header"><div>🇨🇳 China (Nordchina-Ebene)</div><div style="color:var(--amber)"><strong>Hoch · 78%</strong></div></div>
+          <div class="stress-bar-bg"><div class="stress-bar" style="width:78%;background:linear-gradient(90deg,#f59e0b,#ef4444)"></div></div>
+        </div>
+        <div class="stress-item">
+          <div class="stress-header"><div>🇺🇸 USA (Westen/Südwesten)</div><div style="color:var(--amber)"><strong>Mittel-Hoch · 65%</strong></div></div>
+          <div class="stress-bar-bg"><div class="stress-bar" style="width:65%;background:linear-gradient(90deg,#f59e0b,#fcd34d)"></div></div>
+        </div>
+        <div class="stress-item">
+          <div class="stress-header"><div>🇲🇽 Mexiko (Zentrum)</div><div style="color:var(--amber)"><strong>Mittel · 55%</strong></div></div>
+          <div class="stress-bar-bg"><div class="stress-bar" style="width:55%;background:linear-gradient(90deg,#f59e0b,#fcd34d)"></div></div>
+        </div>
+        <div class="stress-item">
+          <div class="stress-header"><div>🇩🇪 Deutschland</div><div style="color:var(--green)"><strong>Gering · 18%</strong></div></div>
+          <div class="stress-bar-bg"><div class="stress-bar" style="width:18%;background:linear-gradient(90deg,#22c55e,#86efac)"></div></div>
+        </div>
+        <div class="stress-item">
+          <div class="stress-header"><div>🇧🇷 Brasilien / 🇨🇦 Kanada</div><div style="color:var(--green)"><strong>Niedrig · &lt;5%</strong> (Wasserreichtum)</div></div>
+          <div class="stress-bar-bg"><div class="stress-bar" style="width:5%;background:linear-gradient(90deg,#22c55e,#86efac)"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Wasser-Geopolitik – Die unsichtbaren Kriege</div>
+      <div class="conflict-list">
+        <div class="conflict-item">
+          <div class="conflict-header">
+            <div class="conflict-name">🇪🇹🇪🇬 Nilkonflikt – Äthiopien vs. Ägypten</div>
+            <span class="conflict-tag" style="background:rgba(239,68,68,0.2);color:var(--red)">⚠ Eskalation</span>
+          </div>
+          <div class="conflict-text">Äthiopiens GERD-Staudamm (größter Afrikas) reduziert Nilwasser für Ägypten. Ägypten: 95% des Wassers vom Nil, 105 Mio Menschen. Ägypten drohte mit Militärschlag. UN vermittelt.</div>
+        </div>
+        <div class="conflict-item">
+          <div class="conflict-header">
+            <div class="conflict-name">🇨🇳🇻🇳🇹🇭 Mekong – China baut 11 Staudämme</div>
+            <span class="conflict-tag" style="background:rgba(245,158,11,0.2);color:var(--amber)">⚠ Chronisch</span>
+          </div>
+          <div class="conflict-text">China reguliert den Mekong via Staudämme – kontrolliert Wasserstand für 70 Mio Bauern in Vietnam, Laos, Thailand. In Dürrejahren dreht China buchstäblich den Hahn zu.</div>
+        </div>
+        <div class="conflict-item">
+          <div class="conflict-header">
+            <div class="conflict-name">🇺🇸 Colorado River – 7 US-Staaten streiten</div>
+            <span class="conflict-tag" style="background:rgba(245,158,11,0.2);color:var(--amber)">⚠ Krise</span>
+          </div>
+          <div class="conflict-text">Lake Mead auf historischem Tiefstand. Arizona, Nevada, Mexiko müssen Verbrauch drastisch kürzen. Farmer verlieren Wasserrechte. Las Vegas reißt Rasenflächen raus.</div>
+        </div>
+        <div class="conflict-item" style="border-left-color:var(--teal)">
+          <div class="conflict-header">
+            <div class="conflict-name">🇮🇱🇵🇸 Israel – Wasserhoheit als Machtmittel</div>
+            <span class="conflict-tag" style="background:rgba(20,184,166,0.2);color:var(--teal)">Strukturell</span>
+          </div>
+          <div class="conflict-text">Israel kontrolliert Wasserressourcen im Westjordanland. Israelis verbrauchen 4× mehr Wasser pro Kopf als Palästinenser. UN: Wasser als politisches Instrument im Konflikt.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 4: Treiber -->
+  <div>
+    <div class="card-title" style="margin-bottom:16px">Die 4 Kräfte hinter der globalen Wasserkrise</div>
+    <div class="row-4">
+      <div class="driver-card">
+        <div class="driver-icon">🌡️</div>
+        <div class="driver-title">Klimawandel – Extreme werden extremer</div>
+        <div class="driver-text">Mehr Dürren, mehr Überflutungen – gleichzeitig. Schnee als Wasserspeicher schwindet. Gletscher (Trinkwasser für 2 Mrd Menschen) schmelzen. Regenzeit wird unberechenbar. Pegel sinken dauerhaft.</div>
+        <div class="driver-impact impact-high">⬆ Beschleunigt sich</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">🌾</div>
+        <div class="driver-title">Agrar-Industrie – Größter Verbraucher</div>
+        <div class="driver-text">70% des Süßwassers geht in die Landwirtschaft. Bewässerung oft mit 50-70% Verlust durch Verdunstung. Mit 10 Mrd Menschen bis 2050 steigt Nahrungsmittelbedarf um 50%. Wasserkonflikt vorprogrammiert.</div>
+        <div class="driver-impact impact-high">⬆ Wächst mit Bevölkerung</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">💰</div>
+        <div class="driver-title">Privatisierung & Investment</div>
+        <div class="driver-text">Hedgefonds kaufen Wasserrechte in Dürreregionen. Warren Buffett investiert in Wasserinfrastruktur. Goldman Sachs: "Wasser ist das Öl des 21. Jahrhunderts." Kritiker: Grundrecht wird zum Spekulationsobjekt.</div>
+        <div class="driver-impact impact-med">⚠ Kontrovers</div>
+      </div>
+      <div class="driver-card">
+        <div class="driver-icon">🔬</div>
+        <div class="driver-title">Technologie als Ausweg</div>
+        <div class="driver-text">Desalination-Kosten fallen durch Solar um 80% seit 2010. Israel recycelt 90% Abwasser. Präzisionsbewässerung spart 40%. Atmosphären-Wassergewinnung. Technologie könnte die Knappheit lösen – wenn schnell genug.</div>
+        <div class="driver-impact impact-bull">▲ Hoffnungsträger</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 5: Charts -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Globaler Wasserverbrauch nach Sektor (km³/Jahr)</div>
+      <div class="chart-wrap-sm"><canvas id="useChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Wassermarkt – Investment-Universum 2024 ($Mrd)</div>
+      <div class="chart-wrap-sm"><canvas id="marketChart"></canvas></div>
+      <div style="margin-top:10px;font-size:0.76rem;color:var(--subtle);line-height:1.5">
+        💡 <strong style="color:var(--text)">Investment-Tipp:</strong> Der globale Wassermarkt wächst ~6%/Jahr. Wasserinfrastruktur, Aufbereitung und Desalination sind die stärksten Wachstumssegmente – getrieben von Klimawandel & Urbanisierung.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Wasser Dashboard · Daten: UN Water, WRI Aqueduct, FAO AQUASTAT, World Bank, Water Footprint Network · Stand Mai 2025 ·
+  Erstellt für <a href="https://joshua64267.github.io/portfolio">Joshua Müller Portfolio</a>
+</footer>
+
+<script>
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// ── SCARCITY CHART ────────────────────────────────────
+new Chart(document.getElementById('scarcityChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Naher Osten','Nordafrika','Südasien','Nordchina','US-Westen','Mittelmeer','Subsahara','Europa','Lat. Amerika'],
+    datasets: [{
+      label: 'Wasserknappheits-Index (%)',
+      data: [98, 85, 74, 72, 58, 42, 35, 15, 8],
+      backgroundColor: [
+        'rgba(239,68,68,0.85)','rgba(239,68,68,0.75)','rgba(239,68,68,0.65)',
+        'rgba(245,158,11,0.80)','rgba(245,158,11,0.70)','rgba(245,158,11,0.55)',
+        'rgba(56,189,248,0.55)','rgba(34,197,94,0.65)','rgba(34,197,94,0.80)'
+      ],
+      borderRadius: 4
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1, callbacks: { label: ctx => ` ${ctx.parsed.x}% Wasserentnahme vs. Verfügbarkeit` } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' }, max: 100, ticks: { callback: v => v+'%' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// ── USE CHART ─────────────────────────────────────────
+new Chart(document.getElementById('useChart'), {
+  type: 'line',
+  data: {
+    labels: ['1950','1960','1970','1980','1990','2000','2010','2020','2025e','2030e','2050e'],
+    datasets: [
+      { label: '🌾 Landwirtschaft', data: [1100,1400,1700,2100,2500,2800,2900,3100,3200,3400,3900], borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 2 },
+      { label: '🏭 Industrie',       data: [200, 320, 480, 620, 730, 790, 800, 830, 850, 900, 1000], borderColor: '#38bdf8', backgroundColor: 'transparent', borderWidth: 2, borderDash:[4,3], tension: 0.3, pointRadius: 2 },
+      { label: '🏠 Haushalte',       data: [100, 140, 180, 230, 290, 350, 420, 470, 500, 560, 700], borderColor: '#a78bfa', backgroundColor: 'transparent', borderWidth: 2, borderDash:[2,4], tension: 0.3, pointRadius: 2 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#94a3b8', boxWidth: 12, font:{size:10} } },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1, callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} km³` } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => v+' km³' } }
+    }
+  }
+});
+
+// ── MARKET CHART ──────────────────────────────────────
+new Chart(document.getElementById('marketChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Wasser-infrastruktur','Aufbereitung & Recycling','Desalination','Bottled Water','Smart Metering','Bewässerung','Analyse & Monitoring'],
+    datasets: [
+      { label: '2024', data: [280, 145, 22, 300, 18, 58, 12], backgroundColor: 'rgba(56,189,248,0.65)', borderRadius: 4 },
+      { label: '2030e', data: [420, 240, 55, 420, 48, 95, 28], backgroundColor: 'rgba(20,184,166,0.65)', borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#94a3b8', boxWidth: 12 } },
+      tooltip: { backgroundColor: '#0f1520', borderColor: '#1e2d42', borderWidth: 1, callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y} Mrd` } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { font: { size: 9 } } },
+      y: { grid: { color: 'rgba(30,45,66,0.5)' }, ticks: { callback: v => '$'+v+'B' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
