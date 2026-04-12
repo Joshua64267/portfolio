@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venezuela — Crisis Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0f1117;
+            --bg-surface: #1a1d27;
+            --border-color: #2a2d3a;
+            --text-primary: #e6e6e6;
+            --text-secondary: #a0a0a0;
+            --accent: #f59e0b;
+            --accent-rgb: 245, 158, 11;
+            --red: #ef4444;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --grid-dark: #1e2130;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+        }
+
+        /* Ticker Bar */
+        .ticker-container {
+            background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.1), rgba(var(--accent-rgb), 0.05));
+            border-bottom: 1px solid var(--border-color);
+            overflow: hidden;
+            padding: 12px 0;
+            position: relative;
+        }
+
+        .ticker-wrapper {
+            display: flex;
+            animation: scroll-left 60s linear infinite;
+            gap: 40px;
+        }
+
+        .ticker-item {
+            white-space: nowrap;
+            padding: 0 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .ticker-item strong {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Header */
+        .header {
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border-color);
+            padding: 40px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header-title {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header-flag {
+            font-size: 40px;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .kpi-card {
+            background-color: rgba(var(--accent-rgb), 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px;
+        }
+
+        .kpi-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--accent);
+            display: inline-block;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            padding-left: 12px;
+            position: relative;
+        }
+
+        .card-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: var(--accent);
+        }
+
+        .card-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 3px;
+            margin-left: 8px;
+            margin-bottom: 12px;
+        }
+
+        .badge-red {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+        }
+
+        .badge-yellow {
+            background-color: rgba(234, 179, 8, 0.15);
+            color: #fef08a;
+        }
+
+        .badge-accent {
+            background-color: rgba(var(--accent-rgb), 0.15);
+            color: var(--accent);
+        }
+
+        .badge-blue {
+            background-color: rgba(59, 130, 246, 0.15);
+            color: #93c5fd;
+        }
+
+        .card-content {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Chart Container */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            position: relative;
+            min-height: 350px;
+        }
+
+        .chart-card canvas {
+            max-height: 300px;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 16px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: var(--accent);
+        }
+
+        .timeline-item {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            padding-left: 50px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 28px;
+            width: 16px;
+            height: 16px;
+            background-color: var(--accent);
+            border: 3px solid var(--bg-dark);
+            border-radius: 50%;
+        }
+
+        .timeline-year {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .timeline-text {
+            color: var(--text-secondary);
+        }
+
+        /* Thesis Box */
+        .thesis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .thesis-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .thesis-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .thesis-bull {
+            border-left: 3px solid var(--green);
+        }
+
+        .thesis-bear {
+            border-left: 3px solid var(--red);
+        }
+
+        .thesis-wildcard {
+            border-left: 3px solid var(--yellow);
+        }
+
+        .thesis-content {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Grid Layouts */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: var(--bg-surface);
+            border-top: 1px solid var(--border-color);
+            padding: 24px 40px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        .footer a:hover {
+            opacity: 0.7;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                padding: 20px;
+            }
+
+            .header-title {
+                font-size: 24px;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Ticker -->
+    <div class="ticker-container">
+        <div class="ticker-wrapper">
+            <!-- First set -->
+            <div class="ticker-item"><strong>Ölproduktion PDVSA:</strong> 800k bbl/d ▼ Kollaps</div>
+            <div class="ticker-item"><strong>USD/VES:</strong> 36.5 ▼ Bolivar wertlos</div>
+            <div class="ticker-item"><strong>Venezuel. Anleihe:</strong> 22% yield ▼ Junk</div>
+            <div class="ticker-item"><strong>Nicolás Maduro:</strong> seit 2013 ▼ Sanktionen</div>
+            <div class="ticker-item"><strong>Ölpreis (WTI):</strong> $83/bbl ▲+0.4%</div>
+            <div class="ticker-item"><strong>Russland LUKOIL:</strong> Partner ▲ aktiv</div>
+            <div class="ticker-item"><strong>China CNPC:</strong> Partner ▲ aktiv</div>
+            <div class="ticker-item"><strong>Emigranten:</strong> 7,7 Mio. ▼ Rekord</div>
+            <!-- Second set (seamless loop) -->
+            <div class="ticker-item"><strong>Ölproduktion PDVSA:</strong> 800k bbl/d ▼ Kollaps</div>
+            <div class="ticker-item"><strong>USD/VES:</strong> 36.5 ▼ Bolivar wertlos</div>
+            <div class="ticker-item"><strong>Venezuel. Anleihe:</strong> 22% yield ▼ Junk</div>
+            <div class="ticker-item"><strong>Nicolás Maduro:</strong> seit 2013 ▼ Sanktionen</div>
+            <div class="ticker-item"><strong>Ölpreis (WTI):</strong> $83/bbl ▲+0.4%</div>
+            <div class="ticker-item"><strong>Russland LUKOIL:</strong> Partner ▲ aktiv</div>
+            <div class="ticker-item"><strong>China CNPC:</strong> Partner ▲ aktiv</div>
+            <div class="ticker-item"><strong>Emigranten:</strong> 7,7 Mio. ▼ Rekord</div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-top">
+            <div class="header-title">Venezuela Crisis</div>
+            <div class="header-flag">🇻🇪</div>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Ölproduktion</div>
+                <div class="kpi-value">−75% seit 2014</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">BIP-Kollaps</div>
+                <div class="kpi-value">−70% (2014–2021)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Emigranten</div>
+                <div class="kpi-value">7,7 Mio.</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Hyperinflation Peak</div>
+                <div class="kpi-value">10 Mio.% 2019</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Charts Section -->
+        <div class="section">
+            <div class="section-title">Wirtschaftliche Verläufe</div>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">Ölproduktion 1998–2025</h3>
+                    <canvas id="oilChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">BIP-Wachstum 2013–2025</h3>
+                    <canvas id="gdpChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">Hyperinflation (Log-Skala)</h3>
+                    <canvas id="inflationChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">Emigrationswelle 2015–2025</h3>
+                    <canvas id="emigChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-grid">
+                <div class="chart-card" style="grid-column: 1 / -1;">
+                    <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">Öleinnahmen vs. Staatsausgaben</h3>
+                    <canvas id="oilRevenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sectors Section -->
+        <div class="section">
+            <div class="section-title">Schlüsselsektoren & Themen</div>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-title">
+                        ⛽ PDVSA — STAATSKONZERN IN TRÜMMERN
+                        <span class="card-badge badge-red">Kritisch</span>
+                    </div>
+                    <div class="card-content">
+                        Einst 3,2 Mio. bbl/d Kapazität, heute 800k. Chronische Fehlwirtschaft, Korruption, US-Sanktionen. Fachkräfte geflohen. Infrastruktur verfällt. Chevron darf mit US-Genehmigung trotzdem operieren.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🇨🇳🇷🇺 China & Russland als Lebensversicherung
+                        <span class="card-badge badge-yellow">Geopolitik</span>
+                    </div>
+                    <div class="card-content">
+                        China: $60 Mrd. Kredite gegen Öl-Rückzahlung. Russland: Rosneft + Militärberater. Iran: Tanker umgehen Sanktionen. Ohne diese "Achse" wäre das Regime kollabiert.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        💵 Dollarisierung de facto
+                        <span class="card-badge badge-accent">Währung</span>
+                    </div>
+                    <div class="card-content">
+                        Maduro erlaubte 2019 offiziell USD-Nutzung. 70% aller Transaktionen in USD. Supermarkt-Preise in Dollar. Aber: Bolivar für Gehälter, Benzin (0,01 USD/Liter). Bizarre Doppelwirtschaft.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🛢️ Erdölreserven #1 weltweit
+                        <span class="card-badge badge-blue">Ressource</span>
+                    </div>
+                    <div class="card-content">
+                        Venezuela hat die größten nachgewiesenen Ölreserven der Welt: 303 Mrd. Barrel (Orinoco Belt). Schweres Öl, teuer in der Förderung. Keine Technologie + Kapital = ungenutzt. Potential bleibt gigantisch.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🌽 Lebensmittelkrise
+                        <span class="card-badge badge-red">Humanitär</span>
+                    </div>
+                    <div class="card-content">
+                        BIP-Kollaps → Importkollaps → Lebensmittelknappheit. 2016–2019 Gewichtsverlust durchschnittlich 11 kg pro Person ("Maduro-Diät"). UN: 7 Mio. Hungernde. Verbesserung seit 2021 durch Öffnung privater Märkte.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        ⚡ Infrastruktur-Kollaps
+                        <span class="card-badge badge-yellow">Systemisch</span>
+                    </div>
+                    <div class="card-content">
+                        Stromausfälle täglich (3–8 Stunden). Markthallen von Caracas mit Generatoren. Wasserversorgung unsicher. Straßen verfallen. Einst das reichste Land Südamerikas pro Kopf in den 1970ern.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Geopolitical Section -->
+        <div class="section">
+            <div class="section-title">Geopolitische Dimensionen</div>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-title">
+                        🇺🇸 US-Sanktionen
+                        <span class="card-badge badge-red">ÖKONOMISCHER KRIEG</span>
+                    </div>
+                    <div class="card-content">
+                        Obama 2015 erstmals, Trump verschärfte 2019 massiv (Ölembargo). Biden lockerte teilweise für Wahlgespräche 2023, dann wieder verschärft. Chevron Sonderlizenz. Maduro als "Drogenterrorist" von US DOJ angeklagt.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🗳️ Demokratie-Krise
+                        <span class="card-badge badge-red">AUTOKRATIE</span>
+                    </div>
+                    <div class="card-content">
+                        Guaidó 2019 als Interimspräsident anerkannt (60+ Länder), scheiterte. Maduro betrügt Wahl Juli 2024: Opposition gewinnt laut Wahlbeobachtern, Maduro erklärt sich zum Sieger. Internationale Empörung.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🇨🇴 Kolumbien-Migration
+                        <span class="card-badge badge-red">HUMANITÄRE KRISE</span>
+                    </div>
+                    <div class="card-content">
+                        3 Mio. Venezolaner in Kolumbien (größte Migrationskrise der Hemisphäre). Petro-Regierung in Bogotá: bessere Beziehungen zu Maduro als Vorgänger. Grenzhandel wieder aktiv.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        🛢️ Öl-Diplomatie
+                        <span class="card-badge badge-accent">RESSOURCEN-MACHTPOLITIK</span>
+                    </div>
+                    <div class="card-content">
+                        Maduro nutzt Öl als Waffe. Trinidad & Tobago bekommt Gas. Kuba bekommt Öl (politisches Bündnis). China/Russland bekommen Öl-Schuldentilgung. Petrocaribe (günstige Öl-Kredite an Karibik) einst mächtig, jetzt kollabiert.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline Section -->
+        <div class="section">
+            <div class="section-title">Zeitstrahl der Katastrophe</div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-year">1976</div>
+                    <div class="timeline-text">Verstaatlichung der Ölindustrie unter Carlos Andrés Pérez — PDVSA gegründet</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">1998</div>
+                    <div class="timeline-text">Chávez gewinnt Wahl — Bolivarische Revolution. Ölreichtum für Sozialprogramme</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2002–2003</div>
+                    <div class="timeline-text">Ölindustrie-Streik — PDVSA-Kollaps, 18.000 Fachkräfte entlassen. Struktureller Schaden</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2012</div>
+                    <div class="timeline-text">Chávez letzte Wahl gewonnen, stirbt 2013 — Maduro übernimmt</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2014</div>
+                    <div class="timeline-text">Ölpreisabsturz — Venezuela mit 96% Ölabhängigkeit trifft es katastrophal. Krise beginnt</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2019</div>
+                    <div class="timeline-text">US-Vollsanktionen + Guaidó-Episode — Ölproduktion fällt auf 500k bbl/d. Hyperinflation Peak</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2021</div>
+                    <div class="timeline-text">Relative Stabilisierung — Dollarisierung, private Märkte, Ölproduktion leicht erholt</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2024</div>
+                    <div class="timeline-text">Maduro betrügt Wahl — Proteste, internationale Isolation, aber Regime hält sich</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Investment Thesis Section -->
+        <div class="section">
+            <div class="section-title">Investment Thesis</div>
+            <div class="thesis-grid">
+                <div class="thesis-card thesis-bull">
+                    <div class="thesis-label">🚀 Bull Case</div>
+                    <div class="thesis-content">
+                        303 Mrd. Barrel Ölreserven (#1 weltweit). Wenn Sanktionen fallen und Regime wechselt → Ölproduktion könnte auf 2–3 Mio. bbl/d steigen. Enorme Aufhol-Chance für mutige Investoren.
+                    </div>
+                </div>
+                <div class="thesis-card thesis-bear">
+                    <div class="thesis-label">⚠️ Bear Case</div>
+                    <div class="thesis-content">
+                        Politisches Risiko maximal. Rechtssicherheit null. US-Sanktionen solange Maduro. PDVSA-Infrastruktur nach Jahrzehnten Verfall kaum sanierbar. Kapitalflucht-Geschichte.
+                    </div>
+                </div>
+                <div class="thesis-card thesis-wildcard">
+                    <div class="thesis-label">🎰 Wildcard</div>
+                    <div class="thesis-content">
+                        Regime-Wechsel nach Maduro → Venezuela könnte Venezuela 1970 werden. Chevron, TotalEnergies, Shell warten in den Startlöchern.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <a href="../index.html">← Back to Portfolio</a>
+    </div>
+
+    <script>
+        // Chart.js default options
+        Chart.defaults.color = '#a0a0a0';
+        Chart.defaults.borderColor = '#2a2d3a';
+
+        // 1. Oil Production Chart
+        const oilCtx = document.getElementById('oilChart').getContext('2d');
+        new Chart(oilCtx, {
+            type: 'line',
+            data: {
+                labels: ['1998', '2000', '2002', '2004', '2006', '2008', '2010', '2012', '2014', '2016', '2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+                datasets: [{
+                    label: 'Ölproduktion (Mio. bbl/d)',
+                    data: [3.1, 3.2, 2.6, 2.9, 3.0, 3.2, 2.8, 2.6, 2.7, 2.2, 1.5, 0.9, 0.5, 0.5, 0.7, 0.8, 0.9],
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#f59e0b',
+                    pointBorderColor: '#0f1117',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#1e2130' },
+                        beginAtZero: true,
+                        max: 3.5
+                    },
+                    x: {
+                        grid: { color: '#1e2130' }
+                    }
+                }
+            }
+        });
+
+        // 2. GDP Chart
+        const gdpCtx = document.getElementById('gdpChart').getContext('2d');
+        new Chart(gdpCtx, {
+            type: 'bar',
+            data: {
+                labels: ['2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+                datasets: [{
+                    label: 'BIP-Wachstum (%)',
+                    data: [1.3, -3.9, -6.2, -17.0, -15.7, -19.6, -27.7, -30.0, 4.0, 8.0, 5.0, 4.0],
+                    backgroundColor: function(context) {
+                        return context.parsed.y >= 0 ? '#22c55e' : '#ef4444';
+                    },
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#1e2130' }
+                    },
+                    x: {
+                        grid: { color: '#1e2130' }
+                    }
+                }
+            }
+        });
+
+        // 3. Inflation Chart (Log Scale)
+        const inflCtx = document.getElementById('inflationChart').getContext('2d');
+        new Chart(inflCtx, {
+            type: 'bar',
+            data: {
+                labels: ['2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+                datasets: [{
+                    label: 'Hyperinflation (%)',
+                    data: [68, 121, 254, 862, 130060, 9585058, 2355, 1588, 305, 190, 60],
+                    backgroundColor: '#ef4444',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        type: 'logarithmic',
+                        grid: { color: '#1e2130' },
+                        ticks: {
+                            callback: function(v) {
+                                if (v >= 1000000) return (v / 1000000).toFixed(0) + 'M%';
+                                if (v >= 1000) return (v / 1000).toFixed(0) + 'k%';
+                                return v + '%';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { color: '#1e2130' }
+                    }
+                }
+            }
+        });
+
+        // 4. Emigration Chart
+        const emigCtx = document.getElementById('emigChart').getContext('2d');
+        new Chart(emigCtx, {
+            type: 'line',
+            data: {
+                labels: ['2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025e'],
+                datasets: [{
+                    label: 'Kumulativ (Mio.)',
+                    data: [0.7, 1.2, 2.0, 3.4, 4.5, 5.4, 6.0, 6.5, 7.1, 7.7, 7.9],
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#ef4444',
+                    pointBorderColor: '#0f1117',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#1e2130' },
+                        beginAtZero: true,
+                        max: 8.5
+                    },
+                    x: {
+                        grid: { color: '#1e2130' }
+                    }
+                }
+            }
+        });
+
+        // 5. Oil Revenue Chart
+        const revCtx = document.getElementById('oilRevenueChart').getContext('2d');
+        new Chart(revCtx, {
+            type: 'bar',
+            data: {
+                labels: ['2010', '2012', '2014', '2016', '2018', '2020', '2022', '2024'],
+                datasets: [
+                    {
+                        label: 'Öleinnahmen (Mrd USD)',
+                        data: [60, 93, 55, 28, 12, 4, 15, 18],
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Staatsausgaben (Mrd USD)',
+                        data: [80, 120, 90, 45, 25, 15, 20, 22],
+                        backgroundColor: '#ef4444',
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: true, position: 'top' }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#1e2130' },
+                        beginAtZero: true
+                    },
+                    x: {
+                        grid: { color: '#1e2130' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
