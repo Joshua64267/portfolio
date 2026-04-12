@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polen — Volkswirtschaft & Märkte</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:      #0f1117;
+    --surface: #1a1d27;
+    --border:  #2a2d3a;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --accent:  #e11d48;
+    --accent2: #be123c;
+    --red:     #ef4444;
+    --green:   #22c55e;
+    --yellow:  #f59e0b;
+    --blue:    #38bdf8;
+    --purple:  #a78bfa;
+    --white:   #f8fafc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; }
+
+  .ticker-wrap { background: #0a0c12; border-bottom: 1px solid var(--border); overflow: hidden; height: 32px; display: flex; align-items: center; }
+  .ticker-track { display: flex; animation: ticker 55s linear infinite; white-space: nowrap; }
+  .ticker-item { padding: 0 26px; font-size: 11.5px; font-weight: 600; }
+  .ticker-item span { color: var(--muted); margin-right: 5px; }
+  .up { color: var(--green); } .dn { color: var(--red); } .neu { color: var(--accent); }
+  @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+  .header { padding: 22px 28px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px; }
+  .header-left h1 { font-size: 22px; font-weight: 700; }
+  .header-left h1 span { color: var(--accent); }
+  .header-left p { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+  .kpi-row { display: flex; gap: 22px; flex-wrap: wrap; }
+  .kpi { text-align: right; }
+  .kpi-val { font-size: 20px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .kpi-lbl { font-size: 10.5px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: .4px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px 28px; max-width: 1400px; margin: 0 auto; }
+  .col-span-2 { grid-column: span 2; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--accent); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .card-title::before { content:''; display:block; width:3px; height:12px; background:var(--accent); border-radius:2px; }
+  .chart-wrap { position: relative; height: 210px; }
+  .chart-wrap-sm { position: relative; height: 175px; }
+  .chart-wrap-lg { position: relative; height: 250px; }
+
+  .sector-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .sector-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .sc-icon { font-size: 20px; margin-bottom: 5px; }
+  .sc-title { font-size: 11px; font-weight: 700; color: var(--text); }
+  .sc-badge { display:inline-block; margin-top:5px; font-size:9.5px; font-weight:700; padding:2px 8px; border-radius:4px; }
+  .sc-text { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .badge-green { background:rgba(34,197,94,.15); color:var(--green); }
+  .badge-yellow { background:rgba(245,158,11,.15); color:var(--yellow); }
+  .badge-red { background:rgba(239,68,68,.15); color:var(--red); }
+  .badge-blue { background:rgba(56,189,248,.15); color:var(--blue); }
+  .badge-accent { background:rgba(225,29,72,.15); color:var(--accent); }
+
+  .geo-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .geo-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .geo-icon { font-size:20px; margin-bottom:6px; }
+  .geo-title { font-size:11px; font-weight:700; color:var(--text); margin-bottom:4px; }
+  .geo-text { font-size:10.5px; color:var(--muted); line-height:1.4; }
+  .geo-badge { margin-top:8px; font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px; display:inline-block; }
+
+  .timeline { list-style:none; position:relative; padding-left:20px; }
+  .timeline::before { content:''; position:absolute; left:6px; top:0; bottom:0; width:2px; background:var(--border); border-radius:2px; }
+  .timeline li { position:relative; margin-bottom:13px; }
+  .timeline li::before { content:''; position:absolute; left:-17px; top:4px; width:8px; height:8px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
+  .tl-date { font-size:10px; color:var(--accent); font-weight:700; }
+  .tl-text { font-size:11.5px; color:var(--muted); margin-top:1px; line-height:1.4; }
+  .tl-text strong { color:var(--text); }
+
+  .bar-list { display:flex; flex-direction:column; gap:9px; }
+  .bar-row { display:flex; align-items:center; gap:10px; }
+  .bar-label { width:140px; font-size:11px; color:var(--muted); flex-shrink:0; }
+  .bar-track { flex:1; background:var(--bg); border-radius:4px; height:13px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:4px; }
+  .bar-val { width:55px; font-size:11px; font-weight:700; text-align:right; flex-shrink:0; }
+
+  .thesis-box { background:var(--bg); border:1px solid rgba(225,29,72,.2); border-radius:8px; padding:12px; margin-top:12px; }
+  .thesis-label { font-size:10px; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+  .thesis-text { font-size:11px; color:var(--muted); line-height:1.6; }
+
+  .stat-mini { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:12px; }
+  .stat-box { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; text-align:center; }
+  .stat-val { font-size:18px; font-weight:700; }
+  .stat-lbl { font-size:9.5px; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:.4px; }
+
+  .footer { border-top:1px solid var(--border); padding:14px 28px; display:flex; justify-content:space-between; color:var(--muted); font-size:10.5px; margin-top:10px; }
+  .back-link { color:var(--accent); text-decoration:none; font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-track">
+    <div class="ticker-item neu"><span>WIG20 (Warschau)</span>2.486 Punkte <span class="up">▲+0.7%</span></div>
+    <div class="ticker-item neu"><span>EUR/PLN</span>4.19 <span class="up">▲ PLN stark</span></div>
+    <div class="ticker-item neu"><span>10J Staatsanleihe PL</span>5.28% <span class="dn">▼−0.05%</span></div>
+    <div class="ticker-item neu"><span>KGHM (Kupfer/Silber)</span>PLN 142 <span class="up">▲+1.8%</span></div>
+    <div class="ticker-item neu"><span>PKO Bank Polski</span>PLN 58.20 <span class="up">▲+0.4%</span></div>
+    <div class="ticker-item neu"><span>CD Projekt RED</span>PLN 198 <span class="dn">▼−0.9%</span></div>
+    <div class="ticker-item neu"><span>LPP (Modehandel)</span>PLN 14.800 <span class="up">▲+0.3%</span></div>
+    <div class="ticker-item neu"><span>Leitzins NBP</span>5.75% <span class="neu">→ stabil</span></div>
+    <!-- repeat -->
+    <div class="ticker-item neu"><span>WIG20 (Warschau)</span>2.486 Punkte <span class="up">▲+0.7%</span></div>
+    <div class="ticker-item neu"><span>EUR/PLN</span>4.19 <span class="up">▲ PLN stark</span></div>
+    <div class="ticker-item neu"><span>10J Staatsanleihe PL</span>5.28% <span class="dn">▼−0.05%</span></div>
+    <div class="ticker-item neu"><span>KGHM (Kupfer/Silber)</span>PLN 142 <span class="up">▲+1.8%</span></div>
+    <div class="ticker-item neu"><span>PKO Bank Polski</span>PLN 58.20 <span class="up">▲+0.4%</span></div>
+    <div class="ticker-item neu"><span>CD Projekt RED</span>PLN 198 <span class="dn">▼−0.9%</span></div>
+    <div class="ticker-item neu"><span>LPP (Modehandel)</span>PLN 14.800 <span class="up">▲+0.3%</span></div>
+    <div class="ticker-item neu"><span>Leitzins NBP</span>5.75% <span class="neu">→ stabil</span></div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>🇵🇱 <span>Polen</span> — Volkswirtschaft & Märkte</h1>
+    <p>EU-Wachstumschampion · NATO-Ostflanke · Ukraine-Frontlinie · Verteidigungsboom · Produktionsstandort Europa</p>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val">€780 Mrd.</div><div class="kpi-lbl">BIP 2024 (EUR)</div></div>
+    <div class="kpi"><div class="kpi-val">+2,9%</div><div class="kpi-lbl">BIP-Wachstum 2024</div></div>
+    <div class="kpi"><div class="kpi-val">4,0% BIP</div><div class="kpi-lbl">Verteidigungsbudget (NATO #1)</div></div>
+    <div class="kpi"><div class="kpi-val">€76 Mrd.</div><div class="kpi-lbl">EU-Kohäsionsfonds 2021–27</div></div>
+  </div>
+</div>
+
+<!-- ROW 1: GDP-Chart + Inflation -->
+<div class="grid" style="padding-bottom:0;">
+  <div class="card">
+    <div class="card-title">BIP-Wachstum 2004–2025 (%) — EU-Wachstumschampion</div>
+    <div class="chart-wrap-lg">
+      <canvas id="gdpChart"></canvas>
+    </div>
+    <div style="margin-top:10px;font-size:10.5px;color:var(--muted);">
+      Polen: Einziges EU-Land ohne <strong style="color:var(--green);">Rezession während der Finanzkrise 2009</strong>. Seit EU-Beitritt 2004: BIP verdreifacht.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📈 Inflation & Leitzinsen 2019–2025</div>
+    <div class="chart-wrap-lg">
+      <canvas id="inflationChart"></canvas>
+    </div>
+    <div style="margin-top:10px;font-size:10.5px;color:var(--muted);">
+      Inflation Feb. 2023: <strong style="color:var(--red);">+18,4%</strong> — höchste seit 1997. NBP reagierte aggressiv: Leitzins auf 6,75%. Disinflation 2024 erfolgreich.
+    </div>
+  </div>
+</div>
+
+<!-- ROW 2: Verteidigung + Handel -->
+<div class="grid" style="padding-top:8px;padding-bottom:0;">
+  <div class="card">
+    <div class="card-title">🪖 Verteidigungsausgaben % BIP — NATO-Rekord</div>
+    <div class="chart-wrap">
+      <canvas id="defenseChart"></canvas>
+    </div>
+    <div style="margin-top:12px;background:rgba(225,29,72,.07);border:1px solid rgba(225,29,72,.2);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--muted);line-height:1.5;">
+      🛡️ <strong style="color:var(--text);">Polens Verteidigungsumrüstung:</strong> K2-Panzer aus Südkorea (980 Stück), F-35 (32 Jets), HIMARS, Abrams M1A2. Verteidigungsbudget 2025: ~€37 Mrd. — <strong style="color:var(--accent);">größte europäische Aufrüstung seit dem Kalten Krieg.</strong>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🌍 Handelsstruktur — Deutschlands verlängerter Arm</div>
+    <div class="chart-wrap">
+      <canvas id="tradeChart"></canvas>
+    </div>
+    <div style="margin-top:10px;font-size:10.5px;color:var(--muted);">
+      Deutschland = <strong style="color:var(--accent);">27% der polnischen Exporte</strong>. Polen ist tief in die deutsche Lieferkette integriert (Auto, Maschinen, Elektronik). Risiko: DE-Rezession schlägt direkt auf PL durch.
+    </div>
+  </div>
+</div>
+
+<!-- ROW 3: Schlüsselsektoren -->
+<div class="grid" style="padding-top:8px;padding-bottom:0;">
+  <div class="card col-span-2">
+    <div class="card-title">🏭 Schlüsselsektoren der polnischen Wirtschaft</div>
+    <div class="sector-cards">
+      <div class="sector-card">
+        <div class="sc-icon">🚗</div>
+        <div class="sc-title">Automobil & Fertigung</div>
+        <span class="sc-badge badge-accent">EXPORTRÜCKHALT</span>
+        <div class="sc-text">Volkswagen, Stellantis, Toyota produzieren in PL. 3,7 Mio. Fahrzeuge/Jahr Komponentenfertigung. Wrocław, Tychy, Gliwice als Automobilzentren. EV-Umrüstung erfordert Investitionen.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">💻</div>
+        <div class="sc-title">IT & Business Services</div>
+        <span class="sc-badge badge-blue">WACHSTUMSSTAR</span>
+        <div class="sc-text">Polens IT-Sektor boomt: 350k Software-Entwickler. Warschau, Kraków, Wrocław als Tech-Hubs. Google, Amazon, Microsoft haben große Zentren. CD Projekt, Asseco als Flaggschiffe. Nearshoring aus DE/UK.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">⚡</div>
+        <div class="sc-title">Energie & Kohle-Abkehr</div>
+        <span class="sc-badge badge-yellow">IM WANDEL</span>
+        <div class="sc-text">Polen = letzter große Kohle-Verbraucher der EU (70% Strom aus Kohle 2022). Politisch schwieriger Abschied. Gleichzeitig: massive Investitionen in Offshore-Wind (Ostsee), Solar und geplantes AKW (Westinghouse).</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">🔬</div>
+        <div class="sc-title">Rüstungsindustrie</div>
+        <span class="sc-badge badge-green">BOOMSEKTOR</span>
+        <div class="sc-text">PGZ (Polska Grupa Zbrojeniowa), HSW-Panzer, WB Electronics (Drohnen). Südkorea-Joint-Ventures (K2PL, K9PL). Ziel: 50% der Beschaffung aus inländischer Produktion bis 2035.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">📦</div>
+        <div class="sc-title">Logistik & E-Commerce</div>
+        <span class="sc-badge badge-accent">ZENTRALER KNOTENPUNKT</span>
+        <div class="sc-text">Polens Lage = Tor zwischen West- und Osteuropa. Amazon, Zalando, InPost haben riesige Logistikzentren. InPost-Paketautomaten revolutionieren Last-Mile-Delivery (auch UK, FR). €3 Mrd. Umsatz.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">🏦</div>
+        <div class="sc-title">Bankensektor</div>
+        <span class="sc-badge badge-green">SOLIDE MARGEN</span>
+        <div class="sc-text">PKO Bank Polski, Pekao, mBank. Hohe Zinsen 2022–24 = Rekordgewinne. Franchise-Hypotheken-Risiko (CHF-Kredite aus 2008). EZB-Regulierung greift. Konsolidierung nach PiS-Ära-Übernahmen.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 4: Geopolitik -->
+<div class="grid" style="padding-top:8px;padding-bottom:0;">
+  <div class="card col-span-2">
+    <div class="card-title">🛡️ Geopolitische Positionierung</div>
+    <div class="geo-cards">
+      <div class="geo-card">
+        <div class="geo-icon">🇺🇦</div>
+        <div class="geo-title">Ukraine-Krieg: Frontlinie</div>
+        <div class="geo-text">Polen grenzt an die Ukraine und Kaliningrad. 1,5 Mio. ukrainische Kriegsflüchtlinge aufgenommen. Logistik-Drehscheibe für Waffenlieferungen. Wirtschaftlich: Flüchtlinge stützen Arbeitsmarkt, erhöhen Konsum.</div>
+        <div class="geo-badge badge-accent">DIREKT BETROFFEN</div>
+      </div>
+      <div class="geo-card">
+        <div class="geo-icon">🪖</div>
+        <div class="geo-title">NATO Frontlinie</div>
+        <div class="geo-text">US-Truppen dauerhaft stationiert (Camp Kościuszko). Suwalki-Korridor als strategische Schwachstelle zwischen Belarus und Kaliningrad. Polen führt NATO-Battlegroups in Baltics mit.</div>
+        <div class="geo-badge badge-red">SICHERHEITSPRIO #1</div>
+      </div>
+      <div class="geo-card">
+        <div class="geo-icon">🇩🇪</div>
+        <div class="geo-title">Deutschland-Abhängigkeit</div>
+        <div class="geo-text">DE = größter Handelspartner. Deutsche Rezession 2023–24 drückte polnische Industrieexporte. Gleichzeitig: DE-Abwanderung von Fabriken nach PL wegen günstigerer Lohnkosten. Win-Win mit Risiken.</div>
+        <div class="geo-badge badge-yellow">DOPPELTE ABHÄNGIGKEIT</div>
+      </div>
+      <div class="geo-card">
+        <div class="geo-icon">🇪🇺</div>
+        <div class="geo-title">EU-Rückkehr unter Tusk</div>
+        <div class="geo-text">Tusk (seit Dez. 2023) normalisieret EU-Beziehungen nach PiS-Ära. Eingefrorene EU-Mittel (€76 Mrd.) werden schrittweise freigegeben. Rechtsstaat-Reformen im Gange. Bessere Investitionsaussichten.</div>
+        <div class="geo-badge badge-green">EU-FONDS FREIGESCHALTET</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 5: Timeline + Demografie/Investment -->
+<div class="grid" style="padding-top:8px;padding-bottom:10px;">
+  <div class="card">
+    <div class="card-title">📅 Schlüsselereignisse 2004–2025</div>
+    <ul class="timeline">
+      <li><div class="tl-date">2004</div><div class="tl-text"><strong>EU-Beitritt</strong> — Polen tritt EU bei. Massenemigration nach UK/DE beginnt (1,5 Mio. Polen im Ausland). EU-Strukturfonds fließen. Wirtschaftsboom startet.</div></li>
+      <li><div class="tl-date">2009</div><div class="tl-text"><strong>Grüne Insel</strong> — Einziges EU-Land ohne Rezession in der Finanzkrise. Schwacher Zloty federt ab. Starke Binnennachfrage.</div></li>
+      <li><div class="tl-date">2015–2023</div><div class="tl-text"><strong>PiS-Ära</strong> — Nationalpopulismus, Rechtsstaatskonflikte mit EU. 500+ Sozialprogramm erhöht Konsum, Inflation. EU friert Milliarden ein.</div></li>
+      <li><div class="tl-date">Feb. 2022</div><div class="tl-text"><strong>Ukraine-Invasion</strong> — Polen nimmt 1,5 Mio. Flüchtlinge auf. Energiepreisschock. Aufrüstung beginnt sofort. Inflation auf 18%.</div></li>
+      <li><div class="tl-date">Dez. 2023</div><div class="tl-text"><strong>Machtwechsel: Tusk</strong> — Pro-EU-Regierung. Eingefrorene EU-Mittel werden freigegeben. Justizreformen. Investorenvertrauen kehrt zurück.</div></li>
+      <li><div class="tl-date">2024</div><div class="tl-text"><strong>NATO-Rekord-Rüstung</strong> — 4% BIP für Verteidigung. K2-Panzer aus Korea, F-35, HIMARS-Bestellungen. Polnische Rüstungsindustrie wächst massiv.</div></li>
+      <li><div class="tl-date">2025+</div><div class="tl-text"><strong>AKW-Planung & Offshore-Wind</strong> — Westinghouse baut erstes AKW (Pumpspeicher 2033). Offshore-Wind Ostsee: 6 GW bis 2030 geplant.</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 Demografie & FDI-Zuflüsse nach Sektor</div>
+    <div class="chart-wrap-sm">
+      <canvas id="fdiChart"></canvas>
+    </div>
+    <div style="margin-top:14px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:700;">⚠️ Demografische Herausforderungen</div>
+      <div class="bar-list">
+        <div class="bar-row">
+          <div class="bar-label">Geburtenrate (2024)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:30%;background:var(--red);"></div></div>
+          <div class="bar-val" style="color:var(--red);">1,29</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Emigranten (Mio.)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:45%;background:var(--yellow);"></div></div>
+          <div class="bar-val" style="color:var(--yellow);">~2,5 M.</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Ukr. Zuwanderer</div>
+          <div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--blue);"></div></div>
+          <div class="bar-val" style="color:var(--blue);">1,5 M.</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Median-Alter</div>
+          <div class="bar-track"><div class="bar-fill" style="width:70%;background:var(--muted);"></div></div>
+          <div class="bar-val" style="color:var(--muted);">42 J.</div>
+        </div>
+      </div>
+    </div>
+    <div class="thesis-box">
+      <div class="thesis-label">💡 Investment-Thesen</div>
+      <div class="thesis-text">
+        <span style="color:var(--green);">BULL:</span> EU-Fonds-Boom (€76 Mrd.), Rüstungssektor-Wachstum, IT-Nearshoring-Hub, Tusk-Stabilität, stärker werdende Währung bei Zinssenkungen.<br>
+        <span style="color:var(--red);">BEAR:</span> Demografiekrise (niedrige Geburten, Emigration), Deutschland-Abhängigkeit, Energiewende kostspielig (Kohle-Abkehr), geopolitisches Risiko (Russland/Belarus).<br>
+        <span style="color:var(--yellow);">WILDCARD:</span> Ukraine-Wiederaufbau → Polen als Logistik-Hub. Trump-NATO-Zweifel könnten polnische Verteidigungsausgaben weiter erhöhen.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <a href="../index.html" class="back-link">← Portfolio</a>
+  <span>Quellen: GUS Statistik Polen, NBP, Eurostat, IMF, World Bank, SIPRI — Illustrativ Q1 2025</span>
+  <span>Polen Dashboard v1.0</span>
+</div>
+
+<script>
+const accent = '#e11d48', red = '#ef4444', green = '#22c55e', yellow = '#f59e0b';
+const blue = '#38bdf8', purple = '#a78bfa', muted = '#64748b';
+Chart.defaults.color = muted;
+Chart.defaults.borderColor = '#2a2d3a';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// GDP Growth 2004-2025
+const years = ['04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25e'];
+const gdp = [5.3, 3.5, 6.2, 7.2, 4.2, 2.8, 3.6, 5.0, 1.6, 1.4, 3.3, 3.8, 3.1, 4.9, 5.3, 4.5, -2.5, 6.8, 5.3, 0.1, 2.9, 3.5];
+const deGdp = [1.2, 0.9, 3.7, 3.0, 1.0, -5.6, 4.1, 3.9, 0.4, 0.4, 2.2, 1.5, 2.2, 2.6, 1.8, 1.1, -3.8, 2.6, 1.9, -0.3, -0.3, 0.5];
+
+new Chart(document.getElementById('gdpChart'), {
+  type: 'bar',
+  data: {
+    labels: years,
+    datasets: [
+      { label: '🇵🇱 Polen (%)', data: gdp, backgroundColor: gdp.map(v => v < 0 ? 'rgba(239,68,68,.7)' : 'rgba(225,29,72,.65)'), borderRadius: 3, yAxisID: 'y' },
+      { label: '🇩🇪 Deutschland (%)', data: deGdp, type: 'line', borderColor: blue, backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 1, tension: 0.3, yAxisID: 'y', borderDash: [3,2] }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { color: '#1e2130' } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => v+'%' } }
+    }
+  }
+});
+
+// Inflation + Interest Rates
+const inflYears = ['2019','2020','2021','Jan22','Apr22','Aug22','Feb23','Jun23','Jan24','Jun24','Jan25','Apr25'];
+const inflData  = [2.3, 3.4, 5.1, 9.2, 12.4, 16.1, 18.4, 11.5, 3.9, 2.6, 4.9, 4.2];
+const rateData  = [1.5, 0.1, 0.1, 2.25, 4.5, 6.5, 6.75, 6.75, 5.75, 5.75, 5.75, 5.75];
+
+new Chart(document.getElementById('inflationChart'), {
+  type: 'line',
+  data: {
+    labels: inflYears,
+    datasets: [
+      { label: 'Inflation (%)', data: inflData, borderColor: red, backgroundColor: 'rgba(239,68,68,.1)', borderWidth: 2, pointRadius: 2, fill: true, tension: 0.35, yAxisID: 'y' },
+      { label: 'NBP Leitzins (%)', data: rateData, borderColor: yellow, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, fill: false, tension: 0.3, borderDash: [4,2], yAxisID: 'y' }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { color: '#1e2130' }, ticks: { font: { size: 9.5 } } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => v+'%' } }
+    }
+  }
+});
+
+// Defense Spending % GDP
+new Chart(document.getElementById('defenseChart'), {
+  type: 'bar',
+  data: {
+    labels: ['2014','2016','2018','2020','2021','2022','2023','2024','2025e'],
+    datasets: [
+      { label: '🇵🇱 Polen % BIP', data: [1.9, 2.0, 2.0, 2.3, 2.2, 2.4, 3.9, 4.0, 4.1], backgroundColor: 'rgba(225,29,72,.7)', borderRadius: 4, borderSkipped: false },
+      { label: '🇩🇪 Deutschland % BIP', data: [1.1, 1.2, 1.2, 1.4, 1.5, 1.5, 1.7, 2.1, 2.1], backgroundColor: 'rgba(56,189,248,.4)', borderRadius: 4, borderSkipped: false },
+      { label: 'NATO-Ziel (2%)', data: [2,2,2,2,2,2,2,2,2], type: 'line', borderColor: green, backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, borderDash: [5,3] }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => v+'%' }, max: 5 }
+    }
+  }
+});
+
+// Trade Partners (Export destinations)
+new Chart(document.getElementById('tradeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Deutschland', 'Tschechien', 'Frankreich', 'UK', 'Niederlande', 'USA', 'Schweden', 'Sonstiges EU', 'Nicht-EU'],
+    datasets: [{ data: [27, 6, 6, 5, 5, 3, 3, 30, 15],
+      backgroundColor: [blue, accent, yellow, purple, green, red, '#0ea5e9', muted, '#374151'],
+      borderWidth: 2, borderColor: '#1a1d27' }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'right', labels: { boxWidth: 10, font: { size: 9.5 }, padding: 6 } },
+      tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.parsed + '%' } }
+    },
+    cutout: '52%'
+  }
+});
+
+// FDI by sector
+new Chart(document.getElementById('fdiChart'), {
+  type: 'bar',
+  data: {
+    labels: ['IT & Services', 'Fertigung', 'Logistik', 'Rüstung', 'Energie', 'Finanzsektor', 'Immobilien'],
+    datasets: [
+      { label: 'FDI 2022 (Mrd. EUR)', data: [4.2, 5.8, 3.1, 0.8, 2.5, 1.9, 1.2], backgroundColor: 'rgba(225,29,72,.4)', borderRadius: 3 },
+      { label: 'FDI 2024 (Mrd. EUR)', data: [6.8, 6.2, 4.5, 3.2, 3.8, 2.1, 1.4], backgroundColor: 'rgba(225,29,72,.75)', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { boxWidth: 8, font: { size: 10 } } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': €' + ctx.parsed.y + ' Mrd.' } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 9.5 } } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => '€'+v+'B' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
