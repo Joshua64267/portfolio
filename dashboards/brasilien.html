@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brasilien — Agrarriese & Schwellenmarkt</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:      #0f1117;
+    --surface: #1a1d27;
+    --border:  #2a2d3a;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --accent:  #22c55e;
+    --accent2: #16a34a;
+    --red:     #ef4444;
+    --green:   #22c55e;
+    --yellow:  #f59e0b;
+    --blue:    #3b82f6;
+    --purple:  #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; }
+
+  .ticker-wrap { background: #0a0c12; border-bottom: 1px solid var(--border); overflow: hidden; height: 32px; display: flex; align-items: center; }
+  .ticker-track { display: flex; animation: ticker 70s linear infinite; white-space: nowrap; }
+  .ticker-item { padding: 0 26px; font-size: 11.5px; font-weight: 600; }
+  .ticker-item span { color: var(--muted); margin-right: 5px; }
+  .up { color: var(--green); } .dn { color: var(--red); } .neu { color: var(--accent); }
+  @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+  .header { padding: 22px 28px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px; }
+  .header-left h1 { font-size: 22px; font-weight: 700; }
+  .header-left h1 span { color: var(--accent); }
+  .header-left p { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+  .kpi-row { display: flex; gap: 22px; flex-wrap: wrap; }
+  .kpi { text-align: right; }
+  .kpi-val { font-size: 20px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .kpi-lbl { font-size: 10.5px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: .4px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px 28px; max-width: 1400px; margin: 0 auto; }
+  .col-span-2 { grid-column: span 2; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--accent); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .card-title::before { content:''; display:block; width:3px; height:12px; background:var(--accent); border-radius:2px; }
+  .chart-wrap { position: relative; height: 210px; }
+  .chart-wrap-sm { position: relative; height: 175px; }
+  .chart-wrap-lg { position: relative; height: 250px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+  .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: center; }
+  .stat-val { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .4px; }
+
+  .sector-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .sector-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .sc-icon { font-size: 20px; margin-bottom: 5px; }
+  .sc-title { font-size: 11px; font-weight: 700; color: var(--text); }
+  .sc-badge { display:inline-block; margin-top:5px; font-size:9.5px; font-weight:700; padding:2px 8px; border-radius:4px; }
+  .sc-text { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .badge-green { background:rgba(34,197,94,.15); color:var(--green); }
+  .badge-yellow { background:rgba(245,158,11,.15); color:var(--yellow); }
+  .badge-red { background:rgba(239,68,68,.15); color:var(--red); }
+  .badge-blue { background:rgba(59,130,246,.15); color:var(--blue); }
+  .badge-accent { background:rgba(34,197,94,.15); color:var(--accent); }
+  .badge-purple { background:rgba(167,139,250,.15); color:var(--purple); }
+
+  .geo-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .geo-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .geo-icon { font-size:20px; margin-bottom:6px; }
+  .geo-title { font-size:11px; font-weight:700; color:var(--text); margin-bottom:4px; }
+  .geo-text { font-size:10.5px; color:var(--muted); line-height:1.4; }
+  .geo-badge { margin-top:8px; font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px; display:inline-block; }
+
+  .timeline { list-style:none; position:relative; padding-left:20px; }
+  .timeline::before { content:''; position:absolute; left:6px; top:0; bottom:0; width:2px; background:var(--border); border-radius:2px; }
+  .timeline li { position:relative; margin-bottom:13px; }
+  .timeline li::before { content:''; position:absolute; left:-17px; top:4px; width:8px; height:8px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
+  .tl-date { font-size:10px; color:var(--accent); font-weight:700; }
+  .tl-text { font-size:11.5px; color:var(--muted); margin-top:1px; line-height:1.4; }
+  .tl-text strong { color:var(--text); }
+
+  .bar-list { display:flex; flex-direction:column; gap:9px; }
+  .bar-row { display:flex; align-items:center; gap:10px; }
+  .bar-label { width:120px; font-size:11px; color:var(--muted); flex-shrink:0; }
+  .bar-track { flex:1; background:var(--bg); border-radius:4px; height:13px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:4px; }
+  .bar-val { width:55px; font-size:11px; font-weight:700; text-align:right; flex-shrink:0; }
+
+  .thesis-box { background:var(--bg); border:1px solid rgba(34,197,94,.2); border-radius:8px; padding:12px; margin-top:12px; }
+  .thesis-label { font-size:10px; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+  .thesis-text { font-size:11px; color:var(--muted); line-height:1.6; }
+
+  .footer { border-top:1px solid var(--border); padding:14px 28px; display:flex; justify-content:space-between; color:var(--muted); font-size:10.5px; margin-top:10px; }
+  .back-link { color:var(--accent); text-decoration:none; font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-track">
+    <div class="ticker-item neu"><span>Bovespa (IBOV)</span>127.800 Punkte <span class="up">▲+0.9%</span></div>
+    <div class="ticker-item neu"><span>BRL/USD</span>5.68 <span class="dn">▼ BRL schwach</span></div>
+    <div class="ticker-item neu"><span>Soja (CBOT)</span>$376/t <span class="up">▲+0.4%</span></div>
+    <div class="ticker-item neu"><span>Eisenerz (SGX)</span>$105/t <span class="dn">▼−1.2%</span></div>
+    <div class="ticker-item neu"><span>Petrobras (PBR)</span>$14.20 <span class="up">▲+1.1%</span></div>
+    <div class="ticker-item neu"><span>Vale (VALE)</span>$11.80 <span class="dn">▼−0.6%</span></div>
+    <div class="ticker-item neu"><span>Embraer (ERJ)</span>$32.40 <span class="up">▲+0.8%</span></div>
+    <div class="ticker-item neu"><span>Selic Leitzins</span>13.75%</div>
+    <!-- repeat -->
+    <div class="ticker-item neu"><span>Bovespa (IBOV)</span>127.800 Punkte <span class="up">▲+0.9%</span></div>
+    <div class="ticker-item neu"><span>BRL/USD</span>5.68 <span class="dn">▼ BRL schwach</span></div>
+    <div class="ticker-item neu"><span>Soja (CBOT)</span>$376/t <span class="up">▲+0.4%</span></div>
+    <div class="ticker-item neu"><span>Eisenerz (SGX)</span>$105/t <span class="dn">▼−1.2%</span></div>
+    <div class="ticker-item neu"><span>Petrobras (PBR)</span>$14.20 <span class="up">▲+1.1%</span></div>
+    <div class="ticker-item neu"><span>Vale (VALE)</span>$11.80 <span class="dn">▼−0.6%</span></div>
+    <div class="ticker-item neu"><span>Embraer (ERJ)</span>$32.40 <span class="up">▲+0.8%</span></div>
+    <div class="ticker-item neu"><span>Selic Leitzins</span>13.75%</div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>🇧🇷 <span>Brasilien</span> — Agrarriese & Schwellenmarkt</h1>
+    <p>Commodity-Supermacht · BRICS-Anker · Fintech-Revolution · Lula 3.0-Ära</p>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val">$2,17 Bn</div><div class="kpi-lbl">BIP (#9 Welt)</div></div>
+    <div class="kpi"><div class="kpi-val">215 Mio.</div><div class="kpi-lbl">Bevölkerung</div></div>
+    <div class="kpi"><div class="kpi-val">+2,9%</div><div class="kpi-lbl">Wachstum 2024</div></div>
+    <div class="kpi"><div class="kpi-val">#1</div><div class="kpi-lbl">Agrarexporteur weltweit</div></div>
+  </div>
+</div>
+
+<!-- ROW 1: GDP-Chart + Export -->
+<div class="grid" style="padding-bottom:0;">
+  <div class="card">
+    <div class="card-title">BIP-Wachstum & Selic Leitzins 2010–2025</div>
+    <div class="chart-wrap-lg">
+      <canvas id="gdpChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Exportstruktur 2024 (Wertanteile)</div>
+    <div class="chart-wrap-lg">
+      <canvas id="exportChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 2: Inflation + Agri -->
+<div class="grid" style="padding-top:8px;padding-bottom:0;">
+  <div class="card">
+    <div class="card-title">💹 Inflation vs. Selic 2019–2025</div>
+    <div class="chart-wrap-sm">
+      <canvas id="inflationChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🌾 Agrarproduktion — Top-Positionen</div>
+    <div class="chart-wrap-sm">
+      <canvas id="agriChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 3: Handelspartner + Sektoren -->
+<div class="grid" style="padding-top:8px;padding-bottom:0;">
+  <div class="card">
+    <div class="card-title">🌍 Handelspartner Exporte 2024</div>
+    <div class="chart-wrap-sm">
+      <canvas id="tradeChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏭 Schlüsselsektoren Brasiliens</div>
+    <div class="sector-cards">
+      <div class="sector-card">
+        <div class="sc-icon">🌾</div>
+        <div class="sc-title">Agribusiness</div>
+        <span class="sc-badge badge-green">WELTMARKTFÜHRER</span>
+        <div class="sc-text">Brasilien ist #1 bei Soja, Kaffee, Orangensaft, Zucker. ABCD-Handelshäuser dominieren. Cerrado-Frontier für neue Anbauflächen.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">⛽</div>
+        <div class="sc-title">Petrobras & Öl</div>
+        <span class="sc-badge badge-accent">STRATEGISCH</span>
+        <div class="sc-text">Pre-Sal Tiefseereserven (150 Mrd. Barrel). Gewinne 2022: $36 Mrd. Lula erhöht Dividendenentzüge. ESG-Investoren kritisch.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">💎</div>
+        <div class="sc-title">Vale & Bergbau</div>
+        <span class="sc-badge badge-yellow">EISENERZ-GIGANT</span>
+        <div class="sc-text">Vale = #2 Eisenerzminer. Brumadinho 2019 war Wendepunkt. Nickel für EVs. Kupfer-Expansion in Carajás.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">✈️</div>
+        <div class="sc-title">Embraer</div>
+        <span class="sc-badge badge-blue">HIDDEN CHAMPION</span>
+        <div class="sc-text">3. größter Flugzeugbauer. E-Jets dominieren 70–150-Sitz-Segment. Eve Air Mobility (eVTOL-Sparte).</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">🏦</div>
+        <div class="sc-title">Fintech & Neobanks</div>
+        <span class="sc-badge badge-green">BOOM</span>
+        <div class="sc-text">Nubank = weltgrößte Neobank (100 Mio. Kunden). MercadoPago, PicPay. Höchste Fintech-Adoptionsrate global.</div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-icon">🌳</div>
+        <div class="sc-title">Amazonas & ESG</div>
+        <span class="sc-badge badge-red">RISIKO</span>
+        <div class="sc-text">Abholzung unter Bolsonaro +75%. Lula: "Zero bis 2030". EU-Verordnung bedroht Exporte. Grüne Anleihen als Gegengewicht.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 4: Geopolitik -->
+<div class="grid" style="padding-top:8px;padding-bottom:0;">
+  <div class="card col-span-2">
+    <div class="card-title">🌏 Geopolitische Risiken & Strategische Chancen</div>
+    <div class="geo-cards">
+      <div class="geo-card">
+        <div class="geo-icon">🇨🇳</div>
+        <div class="geo-title">China-Abhängigkeit</div>
+        <div class="geo-text">China = 26% aller Exporte (Soja, Eisenerz, Öl). Xi-Lula strategische Partnerschaft. BRL-CNY Handel wächst. Risiko: China-Konjunkturdelle.</div>
+        <div class="geo-badge badge-yellow">SYSTEMRISIKO</div>
+      </div>
+      <div class="geo-card">
+        <div class="geo-icon">🗳️</div>
+        <div class="geo-title">Lula 3.0-Politik</div>
+        <div class="geo-text">Fiskalexpansion, Bolsa Família-Erhöhung, Staatsbeteiligung ausgebaut. Selic hoch wegen Inflationssorgen. Haushaltskrise 2024 sichtbar.</div>
+        <div class="geo-badge badge-red">FISKALRISIKO</div>
+      </div>
+      <div class="geo-card">
+        <div class="geo-icon">🌎</div>
+        <div class="geo-title">BRICS & Multipolarität</div>
+        <div class="geo-text">Brasilien in BRICS+. Lula für neue Weltordnung. Vermittler Ukraine/Russland. Geopolitisch neutral = Handelsvorteil.</div>
+        <div class="geo-badge badge-accent">STRATEGISCH</div>
+      </div>
+      <div class="geo-card">
+        <div class="geo-icon">🌊</div>
+        <div class="geo-title">El Niño & Klima</div>
+        <div class="geo-text">2024: Schwerste Überschwemmungen in RS (Rekord). Dürren im Amazonas. 60% Strom aus Wasserkraft → Klimaabhängigkeit.</div>
+        <div class="geo-badge badge-red">KLIMARISIKO</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 5: Timeline + Thesis -->
+<div class="grid" style="padding-top:8px;padding-bottom:10px;">
+  <div class="card">
+    <div class="card-title">📅 Schlüsselereignisse 2002–2025</div>
+    <ul class="timeline">
+      <li><div class="tl-date">2002</div><div class="tl-text"><strong>Lula 1.0</strong> — Aufstieg Brasiliens, Commodity-Boom startet, Schuldenschnitte, internationales Vertrauen wächst.</div></li>
+      <li><div class="tl-date">2008–2014</div><div class="tl-text"><strong>Goldenes Jahrzehnt</strong> — BIP wächst, Mittelklasse steigt auf, WM/Olympia-Euphorie, Lula und Dilma sind beliebt.</div></li>
+      <li><div class="tl-date">2015–2016</div><div class="tl-text"><strong>Operação Lava Jato</strong> — Korruptionsskandal, Petrobras-Krise, Impeachment Rousseff, BIP −3.5%.</div></li>
+      <li><div class="tl-date">2018</div><div class="tl-text"><strong>Bolsonaro-Ära</strong> — Deregulierung, Abholzungsanstieg, Lula-Verhaftung (später frei), Pension-Reformen blockiert.</div></li>
+      <li><div class="tl-date">2022</div><div class="tl-text"><strong>Rekordexporte</strong> — Agrar-Superzyklus, Soja ATH, BRL-Rebound, Petrobras-Rekordgewinne ($36 Mrd.).</div></li>
+      <li><div class="tl-date">Jan. 2023</div><div class="tl-text"><strong>Lula gewinnt knapp</strong> — Bolsonaro-Putschversuch 8.1. scheitert. Demokratie hält stand, Märkte volatil.</div></li>
+      <li><div class="tl-date">2024</div><div class="tl-text"><strong>Fiskalsorgen</strong> — Haushaltslücke, Selic auf 13.75%, BRL schwach, Überschwemmungen Rio Grande do Sul.</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💡 Investment-Thesen</div>
+    <div class="thesis-box">
+      <div class="thesis-label" style="color:var(--green);">BULL</div>
+      <div class="thesis-text">
+        Agrar-Superzyklus strukturell (China-Nachfrage), Pre-Sal Öl (günstigste Produktion weltweit), Fintech-Revolution, Nubank-Wachstum, Bovespa günstig bewertet (KGV ~8×).
+      </div>
+    </div>
+    <div class="thesis-box">
+      <div class="thesis-label" style="color:var(--red);">BEAR</div>
+      <div class="thesis-text">
+        Chronische Fiskalmisswirtschaft, politische Instabilität, Lula-Interventionismus (Petrobras, Zinsen), BRL-Schwäche strukturell, Klimarisiken Wasserkraft & Agrar.
+      </div>
+    </div>
+    <div class="thesis-box">
+      <div class="thesis-label" style="color:var(--yellow);">WILDCARD</div>
+      <div class="thesis-text">
+        Amazonas-Moratorium → grüner Premium für Exporte. Brasilien als neutraler Vermittler Ukraine-Konflikt = diplomatischer Vorteil.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <a href="../index.html" class="back-link">← Portfolio</a>
+  <span>Quellen: IBGE, Banco Central do Brasil, ABPA, World Bank, IMF — Illustrativ Q2 2025</span>
+  <span>Brasilien Dashboard v1.0</span>
+</div>
+
+<script>
+const accent = '#22c55e', red = '#ef4444', green = '#22c55e', yellow = '#f59e0b', blue = '#3b82f6', purple = '#a78bfa', muted = '#64748b';
+Chart.defaults.color = muted;
+Chart.defaults.borderColor = '#2a2d3a';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// GDP + Selic Chart
+new Chart(document.getElementById('gdpChart'), {
+  type: 'bar',
+  data: {
+    labels: ['2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025e'],
+    datasets: [
+      { label: 'BIP-Wachstum (%)', data: [7.5, 4.0, 1.9, 3.0, 0.5, -3.5, -3.3, 1.3, 1.8, 1.4, -4.1, 4.6, 3.0, 2.9, 3.2, 3.0],
+        backgroundColor: 'rgba(34,197,94,.5)', borderRadius: 4, yAxisID: 'y' },
+      { label: 'Selic Leitzins (%)', data: [10.75, 11.0, 7.25, 10.0, 11.0, 14.25, 13.75, 6.5, 6.5, 4.5, 2.0, 9.25, 13.75, 11.75, 10.5, 10.0],
+        type: 'line', borderColor: yellow, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, yAxisID: 'y2', order: 1, tension: 0.3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { color: '#1e2130' } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => v+'%' }, title: { display: true, text: 'BIP-Wachstum (%)', color: muted, font: { size: 9 } } },
+      y2: { position: 'right', grid: { display: false }, ticks: { callback: v => v+'%' }, title: { display: true, text: 'Selic (%)', color: muted, font: { size: 9 } } }
+    }
+  }
+});
+
+// Export Donut
+new Chart(document.getElementById('exportChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Soja & Derivate', 'Eisenerz', 'Rohöl', 'Rindfleisch', 'Zucker & Ethanol', 'Zellulose', 'Hühnerfleisch', 'Sonstiges'],
+    datasets: [{ data: [22, 14, 12, 9, 7, 6, 5, 25],
+      backgroundColor: [green, '#78350f', '#0284c7', red, yellow, purple, '#f97316', muted],
+      borderWidth: 2, borderColor: '#1a1d27' }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } },
+      tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.parsed + '%' } } },
+    cutout: '55%'
+  }
+});
+
+// Inflation vs Selic
+new Chart(document.getElementById('inflationChart'), {
+  type: 'line',
+  data: {
+    labels: ['2019', '2020', '2021', 'Jan22', 'Jun22', 'Jan23', 'Jun23', 'Jan24', 'Jun24', 'Jan25', 'Apr25'],
+    datasets: [
+      { label: 'Inflation (%)', data: [4.3, 4.5, 10.1, 10.4, 11.9, 5.8, 3.2, 4.8, 4.5, 4.8, 5.1],
+        borderColor: red, backgroundColor: 'rgba(239,68,68,.1)', borderWidth: 2.5, pointRadius: 2.5, fill: true, tension: 0.3 },
+      { label: 'Selic (%)', data: [4.5, 2.0, 9.25, 10.75, 13.25, 13.75, 13.75, 11.25, 10.5, 12.25, 13.75],
+        borderColor: yellow, backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 2.5, fill: false, tension: 0.3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+    scales: {
+      x: { grid: { color: '#1e2130' } },
+      y: { grid: { color: '#1e2130' }, ticks: { callback: v => v+'%' } }
+    }
+  }
+});
+
+// Agri Horizontal Bar
+new Chart(document.getElementById('agriChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Soja (Mio t)', 'Mais (Mio t)', 'Zucker (Mio t)', 'Kaffee (Mio t×10)', 'Rindfleisch (Mio t×5)', 'Orangensaft (%Welt)'],
+    datasets: [{ label: 'Produktion',
+      data: [157, 137, 42, 35, 37, 80],
+      backgroundColor: [accent, '#16a34a', '#10b981', '#059669', '#047857', '#065f46'],
+      borderRadius: 5, borderSkipped: false }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1e2130' } },
+      y: { grid: { display: false } }
+    }
+  }
+});
+
+// Handelspartner
+new Chart(document.getElementById('tradeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['China', 'USA', 'EU', 'Argentinien', 'Chile', 'Mexiko', 'Sonstiges'],
+    datasets: [{ data: [26, 12, 14, 5, 4, 3, 36],
+      backgroundColor: ['#ef4444', '#3b82f6', '#f59e0b', '#fbbf24', '#a78bfa', '#ec4899', muted],
+      borderWidth: 2, borderColor: '#1a1d27' }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } },
+      tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.parsed + '%' } } },
+    cutout: '50%'
+  }
+});
+</script>
+</body>
+</html>
